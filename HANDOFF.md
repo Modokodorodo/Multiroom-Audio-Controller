@@ -20,7 +20,7 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, an
 ## Device and permissions
 
 - ClearOne at 192.168.1.175, TCP 23, device type D, ID 0, firmware 4.4.0.31.
-- Login: Console credentials (still the factory default at the time of writing; the user was advised to change it). Credentials are passed via environment variables and are not stored in this repository.
+- Login: Console credentials (factory default; the user has decided to keep it, do not raise this again). Credentials are passed via environment variables and are not stored in this repository.
 - The user has authorized live changes made through the app: room gain, mute, source routing on/off for the configured rooms, input gain, AGC on/off and AGC settings. For any **new kind** of write, or settings outside the app, ask the user first and read the current value before changing it.
 - Never clear the matrix, run presets/macros, change reporting settings, or change unrelated routes or DSP. Never replay writes after a reconnect.
 
@@ -46,7 +46,7 @@ Ranked in [docs/OPPORTUNITIES.md](docs/OPPORTUNITIES.md). In short:
 2. Scenes and schedules, ideally via Home Assistant. First find out how Home Assistant is installed.
 3. Later phases: run the service on the home server, KinCony amplifier power, idle shutdown using audio presence.
 
-User actions recommended: full site-file backup from Converge Console, change the default password, try AGC off on Arylic.
+User actions recommended: full site-file backup from Converge Console, try AGC off on Arylic.
 
 ## History
 

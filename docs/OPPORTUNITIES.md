@@ -9,7 +9,7 @@ Status legend: **Done**, **Next**, **Idea**, **Later phase** (from the original 
 | # | Item | Why | Status |
 |---|---|---|---|
 | U1 | Save a full site file / backup from the ClearOne Console software | The app's snapshots are partial (labels, gains, a subset of routing). There is no full DSP backup, and real changes are now being made from the app. | Action for user |
-| U2 | Change the factory-default Console password | The default login is published in the manual. Afterwards start the app with the new password (environment variable, never in project files). | Action for user |
+| U2 | Change the factory-default Console password | The default login is published in the manual. | Declined by the user (2026-10-16); do not raise again. Mitigation: keep the ClearOne on the local network only (U3). |
 | U3 | Keep the ClearOne off the internet | Telnet is unencrypted plain text, including the login. | Action for user (currently true) |
 | U4 | Try AGC off on Arylic | AGC is on with up to +18 dB automatic boost, on top of +10 dB input gain. AGC is designed for speech; on music it can lift quiet passages and make dynamics "pump". Compare by ear; if music becomes too quiet, raise the Arylic input gain instead. Keeping AGC on for Alexa (mostly voice) is reasonable. | Action for user (switch is in the app) |
 
