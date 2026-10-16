@@ -37,7 +37,8 @@ Status legend: **Done**, **Next**, **Idea**, **Later phase** (from the original 
 
 | # | Item | Prerequisite | Status |
 |---|---|---|---|
-| L1 | Home Assistant integration | Find out the Home Assistant installation type (HA OS, Supervised, Container, Core) before choosing an approach. Keep device control on the local network. | Later phase |
-| L2 | Move the service to the home server | Same as L1; the device communication is already separate from the browser UI. | Later phase |
+| L1 | Home Assistant integration | Custom integration with sidebar panel and room entities. | **Done** (2026-10-16, pending install by user) |
+| L1b | Music Assistant virtual speaker per room | media_player per room that streams via the Arylic and routes it to the room. One Arylic = one stream at a time. | Next |
+| L2 | Move the service to the home server | Covered by L1: the integration runs inside Home Assistant. | **Done** |
 | L3 | KinCony amplifier power control | KinCony model and Home Assistant entities are unknown. | Later phase |
 | L4 | Idle shutdown | Combine audio presence (A1) with presence detection: for example "no signal for 30 minutes and nobody home, switch the amplifier off". Needs L1 and L3. | Later phase |

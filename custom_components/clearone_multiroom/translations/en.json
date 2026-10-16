@@ -1,0 +1,18 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ClearOne CONVERGE Pro",
+        "description": "Address and Console login of the ClearOne. The connection is checked before saving.",
+        "data": {"host": "Host", "port": "Telnet port", "username": "Username", "password": "Password", "device_id": "Device ID"}
+      }
+    },
+    "error": {"cannot_connect": "Cannot connect to the ClearOne.", "invalid_auth": "The ClearOne rejected the login."},
+    "abort": {"already_configured": "This ClearOne is already configured."}
+  },
+  "entity": {
+    "number": {"volume": {"name": "Volume"}},
+    "switch": {"mute": {"name": "Mute"}},
+    "binary_sensor": {"playing": {"name": "Playing"}}
+  }
+}

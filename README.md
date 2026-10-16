@@ -12,11 +12,30 @@ A local browser interface for a **ClearOne CONVERGE Pro 880T** used as a multi-r
 
 No dependencies, no build step, no cloud service. Node.js 22 or newer is the only requirement.
 
-## Run
+## Home Assistant integration
+
+`custom_components/clearone_multiroom` runs the same control inside Home Assistant, with no separate service:
+
+- A **Multiroom** item in the sidebar with the same interface (Rooms, Inputs, Settings), following your Home Assistant theme.
+- Per room, a Home Assistant device (assigned to an area with the room's name) with: **Volume** (number, capped), **Mute** (switch), one **switch per source** (Arylic, Birds, Alexa), and **Playing** (binary sensor). Use them on dashboards, in automations and in Alexa routines.
+- Input gain and AGC are back-end settings: only in the sidebar panel, not as entities.
+
+Install:
+
+1. **HACS**: HACS → ⋮ → Custom repositories → add `https://github.com/Modokodorodo/Multiroom-Audio-Controller` as type *Integration* → download **ClearOne Multiroom**. Or copy `custom_components/clearone_multiroom` into your Home Assistant `config/custom_components/` folder.
+2. Restart Home Assistant.
+3. Settings → Devices & services → Add integration → **ClearOne Multiroom**. Enter host, port 23, Console username and password, device ID 0. The login is checked before saving and stored by Home Assistant, not in this repository.
+
+Run only one controller against the ClearOne for daily use (this integration *or* the Mac app); both work side by side, but each keeps its own connection.
+
+## Run the Mac app
 
 ```sh
 node --version          # 22 or newer
-npm test                # automated tests (simulated device)
+npm test                # Mac app tests (simulated device)
+python3 -m unittest discover -s tests          # integration device tests (Python 3.11+)
+python3 -m pytest tests_ha                       # integration in a Home Assistant test instance
+                                                 # (needs: pip install pytest-homeassistant-custom-component)
 npm start               # mock mode: http://127.0.0.1:8787
 ```
 

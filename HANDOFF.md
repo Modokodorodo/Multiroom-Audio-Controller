@@ -6,6 +6,8 @@ Current state of the project for whoever continues (Claude Code, Codex or a pers
 
 The live browser interface controls the real ClearOne CONVERGE Pro 880T and is in daily use by the owner.
 
+**New (Milestone 13): Home Assistant integration** in `custom_components/clearone_multiroom` (install: README). Python port of the device logic (same whitelist, validation and readback), a **Multiroom** sidebar panel (port of the web UI, using Home Assistant theme colors, state pushed over the HA WebSocket), and per-room entities: Volume (number), Mute (switch), one switch per source, Playing (binary sensor). Input gain and AGC are panel-only by the user's choice. Caps are stored in the config entry options. Tested: 8 Python device tests against a simulated ClearOne; 2 tests in a real Home Assistant 2025.1 test instance (setup, entities, services, panel registration, WebSocket commands, config flow incl. wrong password, unload); hardware read and one gain write/restore through the Python code. **Not yet tested: installation in the user's Home Assistant and the panel in a browser.** Next: Music Assistant virtual speakers per room (media_player entities that stream via the Arylic).
+
 | Area | State |
 |---|---|
 | Rooms | Toilet (O1), Kitchen extension (O2), Laundry room (O3). Mono, one output each. O4–O12 are expansion outputs and hidden. |
@@ -13,7 +15,7 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 | Inputs tab | Input gain per source; AGC on/off and settings in a dialog. Arylic = M1+M2 written together. |
 | Settings | Per-room volume caps (Toilet -25, Kitchen extension -15, Laundry room -20 dB, confirmed by the user). |
 | Connection | Status pill, warning banner, automatic reconnect with back-off (5–30 s); no writes are replayed. |
-| Tests | `npm test`: 12 passing (simulated fake device and mock mode). |
+| Tests | `npm test`: 12 passing (Mac app). Python: 8 device tests + 2 Home Assistant tests passing. |
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, and [docs/HARDWARE.md](docs/HARDWARE.md) for every hardware test performed.
 

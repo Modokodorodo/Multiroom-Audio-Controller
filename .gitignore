@@ -13,3 +13,8 @@ config/caps.local.json*
 
 # Manufacturer manuals: ClearOne copyright, not redistributed. Keep local copies in docs/.
 docs/*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
