@@ -107,3 +107,82 @@ async def test_config_flow_checks_login(hass: HomeAssistant, socket_enabled) -> 
         await hass.config_entries.async_unload(result["result"].entry_id)
     finally:
         await fake.stop()
+
+
+async def test_room_speakers_stream_via_arylic(hass: HomeAssistant, socket_enabled) -> None:
+    """Room speakers: state/metadata mirror the Arylic, volume maps to the room range, play routes Arylic in."""
+    from homeassistant.const import EVENT_CALL_SERVICE
+
+    fake = FakeClearOne()
+    port = await fake.start()
+    hass.states.async_set("media_player.arylic", "playing", {"media_title": "Song", "media_artist": "Band"})
+    calls = []
+    hass.bus.async_listen(EVENT_CALL_SERVICE, lambda e: calls.append(e.data) if e.data.get("service_data", {}).get("entity_id") == "media_player.arylic" else None)
+    entry = MockConfigEntry(domain=DOMAIN, title="ClearOne test", unique_id="127.0.0.1_0",
+                            data={"host": "127.0.0.1", "port": port, "username": "u", "password": "p", "device_id": "0"},
+                            options={"arylic_entity": "media_player.arylic"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    for _ in range(50):
+        await hass.async_block_till_done()
+        if entry.runtime_data.status == "ready":
+            break
+        await asyncio.sleep(0.05)
+    await hass.async_block_till_done()
+    try:
+        toilet = hass.states.get("media_player.toilet")
+        assert toilet.state == "playing"
+        assert toilet.attributes["media_title"] == "Song"
+        assert toilet.attributes["volume_level"] == (-35 + 60) / (-25 + 60)  # -35 dB in -60..-25
+
+        await hass.services.async_call("media_player", "volume_set", {"entity_id": "media_player.toilet", "volume_level": 0.5}, blocking=True)
+        assert "#D0 GAIN 1 O -42.5 A" in fake.received  # -60 + 0.5 * 35
+
+        await hass.services.async_call("media_player", "turn_off", {"entity_id": "media_player.laundry_room"}, blocking=True)
+        await hass.async_block_till_done()
+        assert hass.states.get("media_player.laundry_room").state == "off"
+        assert "#D0 MTRX A P 3 O 0" in fake.received
+
+        await hass.services.async_call("media_player", "play_media", {"entity_id": "media_player.laundry_room",
+            "media_content_type": "music", "media_content_id": "http://ma/stream.flac"}, blocking=True)
+        await hass.async_block_till_done()
+        assert "#D0 MTRX A P 3 O 1" in fake.received  # Arylic routed into the room first
+        assert calls[-1]["service"] == "play_media"
+        assert calls[-1]["service_data"]["media_content_id"] == "http://ma/stream.flac"
+
+        for room in ("toilet", "kitchen_extension", "laundry_room"):
+            await hass.services.async_call("media_player", "turn_off", {"entity_id": f"media_player.{room}"}, blocking=True)
+        assert calls[-1]["service"] == "media_pause"  # nobody listening any more
+
+        hass.states.async_set("media_player.arylic", "playing", {"volume_level": 0.4})  # e.g. lowered in the Spotify app
+        await hass.async_block_till_done()
+        assert calls[-1]["service"] == "volume_set" and calls[-1]["service_data"]["volume_level"] == 1.0
+        n = len(calls)
+        hass.states.async_set("media_player.arylic", "playing", {"volume_level": 0.3})
+        await hass.async_block_till_done()
+        assert len(calls) == n  # rate-limited: no second attempt within 30 s
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await fake.stop()
+
+
+async def test_options_choose_arylic_and_keep_caps(hass: HomeAssistant, socket_enabled) -> None:
+    fake = FakeClearOne()
+    entry = await _setup(hass, fake)
+    try:
+        entry.runtime_data.set_cap("toilet", -30)
+        hass.states.async_set("media_player.arylic", "idle")
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {"arylic_entity": "media_player.arylic"})
+        assert result["type"] == "create_entry"
+        await hass.async_block_till_done()
+        assert entry.options == {"caps": {"toilet": -30, "kitchen-ext": -15.0, "laundry": -20.0}, "arylic_entity": "media_player.arylic"}
+        for _ in range(50):  # reloaded with the Arylic configured
+            await hass.async_block_till_done()
+            if entry.runtime_data and entry.runtime_data.status == "ready":
+                break
+            await asyncio.sleep(0.05)
+        assert hass.states.get("media_player.toilet").attributes["supported_features"] & 512  # PLAY_MEDIA
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await fake.stop()

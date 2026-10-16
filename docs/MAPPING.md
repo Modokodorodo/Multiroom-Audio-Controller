@@ -27,7 +27,7 @@ Every room may play every source; sources mix (independent on/off per room).
 
 | Source | Route into rooms | Route value when on | Input channels (gain, AGC) | Notes |
 |---|---|---|---|---|
-| Arylic | Processing block A → O1–O3 | 1 | M1 + M2, written together | Arylic L/R summed in processing A (Console screenshot: block A labelled "Arylic"). |
+| Arylic | Processing block A → O1–O3 | 1 | M1 + M2, written together | Arylic L/R summed in processing A (Console screenshot: block A labelled "Arylic"). The Arylic's own volume stays at 100 % (user decision); volume is controlled in the ClearOne. |
 | Birds | M3 → O1–O3 | 3 (mic, non-gated) | M3 | |
 | Alexa | M4 → O1–O3 | 3 (mic, non-gated) | M4 | |
 

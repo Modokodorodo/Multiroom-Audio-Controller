@@ -18,6 +18,8 @@ No dependencies, no build step, no cloud service. Node.js 22 or newer is the onl
 
 - A **Multiroom** item in the sidebar with the same interface (Rooms, Inputs, Settings), following your Home Assistant theme.
 - Per room, a Home Assistant device (assigned to an area with the room's name) with: **Volume** (number, capped), **Mute** (switch), one **switch per source** (Arylic, Birds, Alexa), and **Playing** (binary sensor). Use them on dashboards, in automations and in Alexa routines.
+- A **speaker per room** (`media_player.toilet`, `media_player.kitchen_extension`, `media_player.laundry_room`) for Music Assistant and dashboards. It streams through the Arylic: playing to a room switches Arylic on in that room and forwards the media to the Arylic's media player; turning it off switches Arylic off there (and pauses the Arylic when no room is left). Its volume is the room volume (0–100 % = room minimum to cap) and its mute is the room mute. There is one Arylic, so all room speakers share one stream.
+- The Arylic is kept at **100 % volume**; all volume control happens in the ClearOne.
 - Input gain and AGC are back-end settings: only in the sidebar panel, not as entities.
 
 Install:
@@ -25,6 +27,8 @@ Install:
 1. **HACS**: HACS → ⋮ → Custom repositories → add `https://github.com/Modokodorodo/Multiroom-Audio-Controller` as type *Integration* → download **ClearOne Multiroom**. Or copy `custom_components/clearone_multiroom` into your Home Assistant `config/custom_components/` folder.
 2. Restart Home Assistant.
 3. Settings → Devices & services → Add integration → **ClearOne Multiroom**. Enter host, port 23, Console username and password, device ID 0. The login is checked before saving and stored by Home Assistant, not in this repository.
+4. Integration → **Configure**: choose the Arylic's media player (from the LinkPlay integration). This enables streaming on the room speakers.
+5. Music Assistant → Settings → Providers: add or open **Home Assistant MediaPlayers** and enable the three room speakers.
 
 Run only one controller against the ClearOne for daily use (this integration *or* the Mac app); both work side by side, but each keeps its own connection.
 

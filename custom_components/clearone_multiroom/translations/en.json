@@ -4,15 +4,49 @@
       "user": {
         "title": "ClearOne CONVERGE Pro",
         "description": "Address and Console login of the ClearOne. The connection is checked before saving.",
-        "data": {"host": "Host", "port": "Telnet port", "username": "Username", "password": "Password", "device_id": "Device ID"}
+        "data": {
+          "host": "Host",
+          "port": "Telnet port",
+          "username": "Username",
+          "password": "Password",
+          "device_id": "Device ID"
+        }
       }
     },
-    "error": {"cannot_connect": "Cannot connect to the ClearOne.", "invalid_auth": "The ClearOne rejected the login."},
-    "abort": {"already_configured": "This ClearOne is already configured."}
+    "error": {
+      "cannot_connect": "Cannot connect to the ClearOne.",
+      "invalid_auth": "The ClearOne rejected the login."
+    },
+    "abort": {
+      "already_configured": "This ClearOne is already configured."
+    }
   },
   "entity": {
-    "number": {"volume": {"name": "Volume"}},
-    "switch": {"mute": {"name": "Mute"}},
-    "binary_sensor": {"playing": {"name": "Playing"}}
+    "number": {
+      "volume": {
+        "name": "Volume"
+      }
+    },
+    "switch": {
+      "mute": {
+        "name": "Mute"
+      }
+    },
+    "binary_sensor": {
+      "playing": {
+        "name": "Playing"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Music Assistant / room speakers",
+        "description": "Choose the Arylic's media player. Each room speaker streams through it: playing to a room switches Arylic on in that room.",
+        "data": {
+          "arylic_entity": "Arylic media player"
+        }
+      }
+    }
   }
 }

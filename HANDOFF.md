@@ -6,7 +6,9 @@ Current state of the project for whoever continues (Claude Code, Codex or a pers
 
 The live browser interface controls the real ClearOne CONVERGE Pro 880T and is in daily use by the owner.
 
-**New (Milestone 13): Home Assistant integration** in `custom_components/clearone_multiroom` (install: README). Python port of the device logic (same whitelist, validation and readback), a **Multiroom** sidebar panel (port of the web UI, using Home Assistant theme colors, state pushed over the HA WebSocket), and per-room entities: Volume (number), Mute (switch), one switch per source, Playing (binary sensor). Input gain and AGC are panel-only by the user's choice. Caps are stored in the config entry options. Tested: 8 Python device tests against a simulated ClearOne; 2 tests in a real Home Assistant 2025.1 test instance (setup, entities, services, panel registration, WebSocket commands, config flow incl. wrong password, unload); hardware read and one gain write/restore through the Python code. **Not yet tested: installation in the user's Home Assistant and the panel in a browser.** Next: Music Assistant virtual speakers per room (media_player entities that stream via the Arylic).
+**New (Milestone 13): Home Assistant integration** in `custom_components/clearone_multiroom` (install: README). Python port of the device logic (same whitelist, validation and readback), a **Multiroom** sidebar panel (port of the web UI, using Home Assistant theme colors, state pushed over the HA WebSocket), and per-room entities: Volume (number), Mute (switch), one switch per source, Playing (binary sensor). Input gain and AGC are panel-only by the user's choice. Caps are stored in the config entry options. Tested: 8 Python device tests against a simulated ClearOne; 2 tests in a real Home Assistant 2025.1 test instance (setup, entities, services, panel registration, WebSocket commands, config flow incl. wrong password, unload); hardware read and one gain write/restore through the Python code. **Not yet tested: installation in the user's Home Assistant and the panel in a browser.** 
+
+**Milestone 14: room speakers for Music Assistant** (version 0.2.0). `media_player.py`: one speaker per room; state and track info mirror the Arylic's media player while Arylic is routed to the room; play/play_media route Arylic into the room first and forward to the Arylic; turn_off removes the route and pauses the Arylic when no room has it; volume_level maps linearly onto the room's dB range up to the cap; mute = room mute. Arylic entity chosen in the integration options (caps are preserved; changing the Arylic reloads the entry). By user decision the Arylic stays at 100 % volume: the integration sets it back to 1.0 when something lowers it (max once per 30 s). Tested in a Home Assistant test instance with a simulated Arylic (4 HA tests + 8 device tests pass). **Not yet tested with the real Arylic and Music Assistant.**
 
 | Area | State |
 |---|---|
@@ -15,7 +17,7 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 | Inputs tab | Input gain per source; AGC on/off and settings in a dialog. Arylic = M1+M2 written together. |
 | Settings | Per-room volume caps (Toilet -25, Kitchen extension -15, Laundry room -20 dB, confirmed by the user). |
 | Connection | Status pill, warning banner, automatic reconnect with back-off (5–30 s); no writes are replayed. |
-| Tests | `npm test`: 12 passing (Mac app). Python: 8 device tests + 2 Home Assistant tests passing. |
+| Tests | `npm test`: 12 passing (Mac app). Python: 8 device tests + 4 Home Assistant tests passing. |
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, and [docs/HARDWARE.md](docs/HARDWARE.md) for every hardware test performed.
 

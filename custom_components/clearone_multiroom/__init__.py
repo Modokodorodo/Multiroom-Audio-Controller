@@ -8,14 +8,18 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
+import logging
+import time
+
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers import device_registry as dr
 
-from .const import CONF_DEVICE_ID, DOMAIN, OPT_CAPS, PANEL_COMPONENT, PANEL_URL, STATIC_URL
+from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, PANEL_COMPONENT, PANEL_URL, STATIC_URL
 from .device import MultiroomDevice
 from .websocket import async_register_commands
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SWITCH]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SWITCH]
 FRONTEND_DIR = pathlib.Path(__file__).parent / "frontend"
 VERSION = json.loads((pathlib.Path(__file__).parent / "manifest.json").read_text())["version"]
 
@@ -44,6 +48,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
     await _async_register_panel(hass)
     async_register_commands(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    arylic = entry.options.get(OPT_ARYLIC_ENTITY)
+    if arylic:
+        entry.async_on_unload(_keep_arylic_at_full_volume(hass, arylic))
+
+    async def options_updated(hass: HomeAssistant, entry: MultiroomConfigEntry) -> None:
+        # Cap changes are applied live; only a different Arylic player needs a reload.
+        if entry.options.get(OPT_ARYLIC_ENTITY) != arylic:
+            await hass.config_entries.async_reload(entry.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(options_updated))
     return True
 
 
@@ -77,3 +91,26 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
             require_admin=False,
         )
         hass.data[f"{DOMAIN}_panel"] = True
+
+
+_LOGGER = logging.getLogger(__name__)
+FULL_VOLUME_RETRY_S = 30
+
+
+def _keep_arylic_at_full_volume(hass: HomeAssistant, arylic: str):
+    """The Arylic stays at 100 %; room volume is done in the ClearOne. At most one attempt per 30 s."""
+    last_attempt = 0.0
+
+    @callback
+    def changed(event: Event[EventStateChangedData]) -> None:
+        nonlocal last_attempt
+        new = event.data["new_state"]
+        level = new.attributes.get("volume_level") if new else None
+        if level is None or level >= 0.999 or time.monotonic() - last_attempt < FULL_VOLUME_RETRY_S:
+            return
+        last_attempt = time.monotonic()
+        _LOGGER.debug("Setting %s back to full volume (was %s)", arylic, level)
+        hass.async_create_task(hass.services.async_call(
+            "media_player", "volume_set", {"entity_id": arylic, "volume_level": 1.0}, blocking=False))
+
+    return async_track_state_change_event(hass, [arylic], changed)

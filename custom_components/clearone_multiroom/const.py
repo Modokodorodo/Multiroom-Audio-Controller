@@ -4,6 +4,8 @@ from __future__ import annotations
 DOMAIN = "clearone_multiroom"
 CONF_DEVICE_ID = "device_id"
 OPT_CAPS = "caps"
+OPT_ARYLIC_ENTITY = "arylic_entity"
+ARYLIC_SOURCE_ID = "arylic"
 PANEL_URL = "multiroom"
 PANEL_COMPONENT = "clearone-multiroom-panel"
 STATIC_URL = "/clearone_multiroom_static"
