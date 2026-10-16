@@ -5,6 +5,7 @@ const DOMAIN = 'clearone_multiroom';
 const CSS = `
 :host{display:block;min-height:100%;background:var(--primary-background-color);color:var(--primary-text-color);font-family:var(--paper-font-body1_-_font-family,Roboto,sans-serif)}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 .toolbar{display:flex;align-items:center;gap:8px;height:var(--header-height,56px);padding:0 12px;border-bottom:1px solid var(--divider-color);background:var(--app-header-background-color,var(--primary-background-color));color:var(--app-header-text-color,var(--primary-text-color))}
 .toolbar .title{font-size:20px;flex:1;margin-left:4px}
 main{max-width:1180px;margin:auto;padding:16px}
@@ -19,6 +20,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .banner.error{border-color:var(--error-color);color:var(--error-color)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--divider-color);margin-bottom:16px}
 .tabs button{border:none;background:none;padding:10px 16px;color:var(--secondary-text-color);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button:focus{outline:none}.tabs button:focus-visible{outline:2px solid var(--primary-color);outline-offset:-2px;border-radius:6px}
 .tabs button[aria-selected=true]{color:var(--primary-text-color);border-bottom-color:var(--primary-color);font-weight:500}
 .hint{font-size:13px;color:var(--secondary-text-color);margin:0 0 14px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
@@ -34,7 +36,7 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
 .chip{padding:7px 14px;border-radius:999px;border:1px solid var(--divider-color);background:transparent}
 .chip.on{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color,#fff)}
 .chip:disabled,.wide:disabled{opacity:.5;cursor:default}
-.sig{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success-color,#43a047);margin-right:7px;vertical-align:middle}
+.sig{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success-color,#43a047);margin-right:7px;vertical-align:middle}.chip.on .sig{background:currentColor}
 .wide{width:100%;margin-top:14px;padding:10px;border-radius:10px;border:1px solid var(--divider-color);background:transparent;text-align:left}
 .wide.on{border-color:var(--primary-color);color:var(--primary-color)}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:11px;font-weight:500}
