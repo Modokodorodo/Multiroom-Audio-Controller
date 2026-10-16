@@ -1,0 +1,15 @@
+# OS / editor
+.DS_Store
+.claude/
+
+# Dependencies (none today) and scratch
+node_modules/
+tmp/
+
+# Secrets and per-machine settings
+.env
+.env.*
+config/caps.local.json*
+
+# Manufacturer manuals: ClearOne copyright, not redistributed. Keep local copies in docs/.
+docs/*.pdf

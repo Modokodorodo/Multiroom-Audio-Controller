@@ -1,0 +1,10 @@
+{
+  "name": "multiroom-audio-controller",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Local browser controller for a ClearOne CONVERGE Pro 880T multi-room audio system",
+  "repository": {"type": "git", "url": "https://github.com/Modokodorodo/Multiroom-Audio-Controller.git"},
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node src/server.js", "test": "node --test" }
+}

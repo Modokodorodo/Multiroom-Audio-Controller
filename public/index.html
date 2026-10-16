@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Multiroom · Audio controller</title><link rel="stylesheet" href="/style.css"><script type="module" src="/app.js"></script></head>
+<body><main>
+<header><div class="brand">◉ &nbsp; MULTIROOM <span>LOCAL AUDIO</span></div><div class="head-actions"><a href="#connection-section" class="pill" id="pill"><span id="pill-dot" class="dot"></span><span id="pill-text">Loading…</span></a><button id="open-settings">Settings</button></div></header>
+<div id="offline" role="status" hidden></div>
+<div id="error" role="alert" hidden></div>
+<nav class="tabs" role="tablist" aria-label="Views"><button role="tab" id="tab-rooms" aria-selected="true" aria-controls="view-rooms">Rooms</button><button role="tab" id="tab-inputs" aria-selected="false" aria-controls="view-inputs" hidden>Inputs</button></nav>
+<div id="view-rooms" role="tabpanel"><div class="section-title"><h2>Rooms <span id="count"></span></h2><span>SIMULATED READBACK</span></div>
+<section id="rooms" class="rooms" aria-label="Room controls"></section></div>
+<div id="view-inputs" role="tabpanel" hidden><div class="section-title"><h2>Input gain</h2><span>PER SOURCE</span></div><p class="hint">Sets how loud a source is at its input. This affects every room that plays it. Use sparingly; per-room volume is on the Rooms tab.</p><section id="inputs" class="rooms" aria-label="Input gain"></section></div>
+<section class="connection" id="connection-section" aria-label="Connection status"><div><span id="dot" class="dot"></span><strong id="status">Loading…</strong><p id="detail"></p></div><div class="actions"><button id="refresh">Refresh state</button><button id="connection">Disconnect</button></div></section>
+<footer><span>ClearOne CONVERGE Pro 880T · local control</span><span id="foot-note"></span></footer>
+<dialog id="settings" aria-labelledby="settings-title"><h2 id="settings-title">Settings</h2><h3>Maximum volume per room</h3><p class="hint">The slider cannot go above this. Changing a cap never changes the device or the current volume. Allowed: room minimum + 5 dB up to 0 dB.</p><div id="caps"></div><p id="settings-error" role="alert"></p><button id="close-settings" type="button">Close</button></dialog><dialog id="agc-dialog" aria-labelledby="agc-title"><h2 id="agc-title"></h2><p class="hint">Automatic gain control (AGC) raises quiet signals on its own, up to the maximum below. Turning it off makes weak signals quieter. It changes this source in every room.</p><div class="agc-state"><span id="agc-status"></span><button id="agc-switch" type="button" role="switch"></button></div><form id="agc-form"><div class="agc-fields">
+<label>Threshold<span class="rng">-50 to 0 dB, whole numbers</span><input type="number" id="agc-thr" step="1" min="-50" max="0"></label>
+<label>Target<span class="rng">-30 to 20 dB, whole numbers</span><input type="number" id="agc-tgt" step="1" min="-30" max="20"></label>
+<label>Response time<span class="rng">0.10 to 10.00 s</span><input type="number" id="agc-resp" step="0.01" min="0.1" max="10"></label>
+<label>Maximum gain<span class="rng">0 to 18 dB</span><input type="number" id="agc-max" step="0.01" min="0" max="18"></label></div>
+<p class="hint" id="agc-inputs-note"></p><button type="submit" id="agc-save">Save settings</button><span id="agc-saved" role="status"></span></form><p id="agc-error" role="alert"></p><button id="agc-close" type="button">Close</button></dialog></main></body></html>

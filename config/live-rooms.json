@@ -1,0 +1,75 @@
+{
+  "_note": "User-confirmed 2026-10-16: outputs 1-3 are rooms (mono, single output each); outputs 4-12 are expansion and hidden. Every room may play every source; sources mix (independent on/off). Arylic = processing block A (combines Arylic L/R M1+M2 in the unit). Birds M3 and Alexa M4 are mic-group inputs, mode 3 non-gated. Room caps confirmed by the user; editable in the app (overrides in config/caps.local.json). Input gain per source (GAIN <ch> M A) is controlled on the Inputs tab; Arylic = M1+M2 written together. App input-gain range is inputGainRangeDb (device range -65..+20).",
+  "rooms": [
+    {
+      "id": "toilet",
+      "name": "Toilet",
+      "output": 1,
+      "minDb": -60,
+      "maxDb": -25
+    },
+    {
+      "id": "kitchen-ext",
+      "name": "Kitchen extension",
+      "output": 2,
+      "minDb": -60,
+      "maxDb": -15
+    },
+    {
+      "id": "laundry",
+      "name": "Laundry room",
+      "output": 3,
+      "minDb": -60,
+      "maxDb": -20
+    }
+  ],
+  "sources": [
+    {
+      "id": "arylic",
+      "name": "Arylic",
+      "channel": "A",
+      "group": "P",
+      "onMode": 1,
+      "inputs": [
+        {
+          "channel": 1,
+          "group": "M"
+        },
+        {
+          "channel": 2,
+          "group": "M"
+        }
+      ]
+    },
+    {
+      "id": "birds",
+      "name": "Birds",
+      "channel": 3,
+      "group": "M",
+      "onMode": 3,
+      "inputs": [
+        {
+          "channel": 3,
+          "group": "M"
+        }
+      ]
+    },
+    {
+      "id": "alexa",
+      "name": "Alexa",
+      "channel": 4,
+      "group": "M",
+      "onMode": 3,
+      "inputs": [
+        {
+          "channel": 4,
+          "group": "M"
+        }
+      ]
+    }
+  ],
+  "inputGainRangeDb": {
+    "min": -40,
+    "max": 15
+  }
+}
