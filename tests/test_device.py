@@ -214,6 +214,38 @@ class DeviceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(d.state()["rooms"][0]["gainDb"], -35.0)  # shows the real value
         d.close()
 
+    async def test_scenes_save_apply_update_delete(self) -> None:
+        d = await self.make()
+        saved = []
+        d.on_scenes_changed = saved.append
+        sid = d.save_scene("Downstairs", ["kitchen-ext", "laundry"])
+        self.assertEqual(saved[-1][0]["rooms"]["laundry"], {"gainDb": -30.0, "muted": False,
+                         "sources": {"arylic": True, "birds": False, "alexa": False}})
+        for bad in [lambda: d.save_scene("downstairs", ["laundry"]), lambda: d.save_scene("", ["laundry"]),
+                    lambda: d.save_scene("X", []), lambda: d.save_scene("Y", ["nope"]), lambda: d.update_scene("nope")]:
+            with self.assertRaises(ClearOneError):
+                bad()
+        # Change the rooms, then apply: only differing values are written, mute before sources, unmute last.
+        await d.set_room_source("laundry", "alexa", True)
+        await d.set_room_gain("laundry", -45)
+        await d.set_room_mute("kitchen-ext", True)
+        n = len(self.fake.received)
+        await d.apply_scene(sid)
+        writes = [l for l in self.fake.received[n:] if re.search(r" (-?[0-9.]+ A|[0-9])$", l) and " O " in l and "LABEL" not in l and not re.fullmatch(r"#D0 (GAIN|MUTE) [0-9] O|#D0 MTRX \S+ \S+ [0-9] O", l)]
+        self.assertEqual(writes, ["#D0 MUTE 2 O 0", "#D0 MTRX 4 M 3 O 0", "#D0 GAIN 3 O -30.0 A"])
+        s = d.state()
+        self.assertEqual((s["rooms"][2]["gainDb"], s["rooms"][1]["muted"]), (-30.0, False))
+        self.assertEqual(s["scenes"][0]["rooms"][1], {"id": "laundry", "name": "Laundry room", "gainDb": -30.0, "muted": False, "sources": ["Arylic"]})
+        # A scene volume above today's cap is clamped to the cap.
+        d.scenes[0]["rooms"]["laundry"]["gainDb"] = -10.0
+        await d.apply_scene(sid)
+        self.assertEqual(d.room("laundry")["gainDb"], -20.0)
+        d.update_scene(sid, name="Beneden", capture=True)
+        self.assertEqual((d.scenes[0]["name"], d.scenes[0]["rooms"]["laundry"]["gainDb"]), ("Beneden", -20.0))
+        d.delete_scene(sid)
+        self.assertEqual((d.scenes, saved[-1]), ([], []))
+        d.close()
+
     async def test_run_loop_recovers_after_device_restart(self) -> None:
         self.fake = FakeClearOne()
         port = await self.fake.start()

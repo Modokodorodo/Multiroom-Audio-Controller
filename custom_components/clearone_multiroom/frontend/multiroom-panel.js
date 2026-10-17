@@ -56,7 +56,13 @@ dialog h3{margin:0 0 8px;font-size:20px;font-weight:500}
 .caprow{display:flex;align-items:center;gap:8px;margin:10px 0;flex-wrap:wrap}.caprow label{flex:1;min-width:130px}.caprow input{width:84px}
 .msg{font-size:12px;color:var(--secondary-text-color);flex-basis:100%;min-height:1em}
 .err{color:var(--error-color);font-size:13px;min-height:1em}
-.actions{display:flex;gap:8px;align-items:center;margin-top:14px}
+.actions{display:flex;gap:8px;align-items:center;margin-top:14px}.actions.wrap{flex-wrap:wrap}
+.quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.newscene{margin-bottom:16px;max-width:620px}.newscene h2{margin-top:0;font-size:17px}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--secondary-text-color);margin-top:8px}
+.field input{padding:9px;border:1px solid var(--divider-color);border-radius:8px;font:inherit;font-size:15px;background:var(--card-background-color);color:var(--primary-text-color)}
+.checks{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}.checks input{accent-color:var(--primary-color)}
+.rows{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--secondary-text-color);line-height:1.7}.rows strong{color:var(--primary-text-color);font-weight:500}
 @media (max-width:600px){main{padding:12px}.fields{grid-template-columns:1fr}}
 `;
 
@@ -109,8 +115,16 @@ class ClearOneMultiroomPanel extends HTMLElement {
         <button class="btn" id="open-settings">Settings</button></div>
       <main>
         <div id="banner" class="banner" hidden></div><div id="error" class="banner error" role="alert" hidden></div>
-        <nav class="tabs" role="tablist"><button role="tab" id="tab-rooms">Rooms</button><button role="tab" id="tab-inputs">Inputs</button></nav>
-        <section id="rooms" class="grid" aria-label="Rooms"></section>
+        <nav class="tabs" role="tablist"><button role="tab" id="tab-rooms">Rooms</button><button role="tab" id="tab-scenes">Scenes</button><button role="tab" id="tab-inputs">Inputs</button></nav>
+        <div id="rooms-view"><div id="quick" class="quick" aria-label="Scenes" hidden></div><section id="rooms" class="grid" aria-label="Rooms"></section></div>
+        <section id="scenes-view" hidden>
+          <p class="hint">A scene remembers, for the rooms you pick, which sources are on, the volume and mute. Set the rooms the way you want on the Rooms tab, then save it here. Each scene is also a Home Assistant scene entity, so you can use it on dashboards, in automations and with Alexa.</p>
+          <form id="new-scene" class="card newscene"><h2>New scene from the current state</h2>
+            <label class="field">Name<input name="name" maxlength="40" required placeholder="e.g. Downstairs music" autocomplete="off"></label>
+            <div class="label">Rooms</div><div class="checks" id="scene-rooms"></div>
+            <div class="actions"><button class="btn primary" type="submit">Save scene</button><span class="msg" id="scene-msg" role="status"></span></div></form>
+          <div id="scenes" class="grid" aria-label="Saved scenes"></div>
+        </section>
         <section id="inputs-view" hidden><p class="hint">Input gain sets how loud a source is at its input, in every room. AGC is a back-end setting; you rarely need this tab.</p><div id="inputs" class="grid" aria-label="Inputs"></div></section>
         <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p></div></section>
       </main>
@@ -131,6 +145,14 @@ class ClearOneMultiroomPanel extends HTMLElement {
     r.getElementById('menu').append(this._menu);
     r.getElementById('tab-rooms').onclick = () => this._showTab('rooms');
     r.getElementById('tab-inputs').onclick = () => this._showTab('inputs');
+    r.getElementById('tab-scenes').onclick = () => this._showTab('scenes');
+    r.getElementById('new-scene').onsubmit = async e => {
+      e.preventDefault();
+      const form = e.target, msg = r.getElementById('scene-msg');
+      const room_ids = [...form.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
+      msg.textContent = '';
+      if (await this._call('scene_save', {name: form.name.value, room_ids}, 'scene')) { msg.textContent = `Saved "${form.name.value.trim()}"`; form.name.value = ''; }
+    };
     r.getElementById('pill').onclick = e => { e.preventDefault(); r.getElementById('conn').scrollIntoView({behavior: 'smooth'}); };
     r.getElementById('open-settings').onclick = () => this._openSettings();
     r.querySelectorAll('[data-close]').forEach(b => { b.onclick = () => b.closest('dialog').close(); });
@@ -160,7 +182,9 @@ class ClearOneMultiroomPanel extends HTMLElement {
     this._tab = tab;
     try { localStorage.setItem('clearone-multiroom-tab', tab); } catch { /* ignore */ }
     const r = this.shadowRoot;
-    r.getElementById('rooms').hidden = tab !== 'rooms';
+    r.getElementById('rooms-view').hidden = tab !== 'rooms';
+    r.getElementById('scenes-view').hidden = tab !== 'scenes';
+    r.getElementById('tab-scenes').setAttribute('aria-selected', String(tab === 'scenes'));
     r.getElementById('inputs-view').hidden = tab !== 'inputs';
     r.getElementById('tab-rooms').setAttribute('aria-selected', String(tab === 'rooms'));
     r.getElementById('tab-inputs').setAttribute('aria-selected', String(tab === 'inputs'));
@@ -195,6 +219,7 @@ class ClearOneMultiroomPanel extends HTMLElement {
     if (!s || this._editing()) return;
     this._renderRooms(s, ready);
     this._renderInputs(s, ready);
+    this._renderScenes(s, ready);
     if (r.getElementById('agc').open) this._fillAgc(false);
   }
 
@@ -227,6 +252,48 @@ class ClearOneMultiroomPanel extends HTMLElement {
       slider.onchange = () => { slider.blur(); this._call('room', {room_id: room.id, gain_db: Number(slider.value)}, `room:${room.id}`); };
       const mute = card.querySelector('.mute'); mute.disabled = off || room.muted === null;
       mute.onclick = () => this._call('room', {room_id: room.id, muted: !room.muted}, `room:${room.id}`);
+      return card;
+    }));
+  }
+
+  _renderScenes(s, ready) {
+    const r = this.shadowRoot, busy = this._pending === 'scene';
+    const quick = r.getElementById('quick');
+    quick.hidden = !s.scenes.length;
+    quick.replaceChildren(...s.scenes.map(sc => {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.textContent = sc.name; b.disabled = !ready || busy;
+      b.setAttribute('aria-label', `Apply scene ${sc.name}`);
+      b.onclick = () => this._call('scene_apply', {scene_id: sc.id}, 'scene');
+      return b;
+    }));
+    const checks = r.getElementById('scene-rooms');
+    if (!checks.children.length) {
+      checks.replaceChildren(...s.rooms.map(room => {
+        const l = document.createElement('label');
+        l.innerHTML = `<input type="checkbox" value="${esc(room.id)}" checked> ${esc(room.name)}`;
+        return l;
+      }));
+    }
+    r.querySelector('#new-scene button[type=submit]').disabled = !ready || busy;
+    const box = r.getElementById('scenes');
+    box.replaceChildren(...s.scenes.map(sc => {
+      const card = document.createElement('article'); card.className = 'card';
+      const rows = sc.rooms.map(rm => `<li><strong>${esc(rm.name)}</strong> · ${rm.sources.length ? esc(rm.sources.join(' + ')) : 'no sources'} · ${rm.muted ? 'muted' : rm.gainDb + ' dB'}</li>`).join('');
+      card.innerHTML = `<div class="card-head"><span>Scene</span></div><h2>${esc(sc.name)}</h2><ul class="rows">${rows}</ul>
+        <div class="actions wrap"><button class="btn primary" data-a="apply">Apply</button><button class="btn" data-a="capture">Update to current</button><button class="btn" data-a="rename">Rename</button><button class="btn" data-a="delete">Delete</button></div>`;
+      card.querySelectorAll('button').forEach(b => { b.disabled = busy || (!ready && b.dataset.a !== 'rename' && b.dataset.a !== 'delete'); });
+      card.querySelector('[data-a=apply]').onclick = () => this._call('scene_apply', {scene_id: sc.id}, 'scene');
+      card.querySelector('[data-a=capture]').onclick = () => {
+        if (confirm(`Replace "${sc.name}" with the current state of ${sc.rooms.map(x => x.name).join(', ')}?`)) this._call('scene_update', {scene_id: sc.id, capture: true}, 'scene');
+      };
+      card.querySelector('[data-a=rename]').onclick = () => {
+        const name = prompt('New name for this scene', sc.name);
+        if (name && name.trim() !== sc.name) this._call('scene_update', {scene_id: sc.id, name}, 'scene');
+      };
+      card.querySelector('[data-a=delete]').onclick = () => {
+        if (confirm(`Delete scene "${sc.name}"? Its Home Assistant scene entity is removed too.`)) this._call('scene_delete', {scene_id: sc.id}, 'scene');
+      };
       return card;
     }));
   }

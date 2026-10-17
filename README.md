@@ -20,6 +20,7 @@ No dependencies, no build step, no cloud service. Node.js 22 or newer is the onl
 - Per room, a Home Assistant device (assigned to an area with the room's name) with: **Volume** (number, capped), **Mute** (switch), one **switch per source** (Arylic, Birds, Alexa), and **Playing** (binary sensor). Use them on dashboards, in automations and in Alexa routines.
 - A **speaker per room** (`media_player.toilet`, `media_player.kitchen_extension`, `media_player.laundry_room`) for Music Assistant and dashboards. It streams through the Arylic: playing to a room switches Arylic on in that room and forwards the media to the Arylic's media player; turning it off switches Arylic off there (and pauses the Arylic when no room is left). Its volume is the room volume (0–100 % = room minimum to cap) and its mute is the room mute. There is one Arylic, so all room speakers share one stream.
 - The Arylic is kept at **100 % volume**; all volume control happens in the ClearOne.
+- **Scenes**: set the rooms the way you want, then save it on the panel's Scenes tab (sources on/off, volume and mute for the rooms you pick). Apply with one tap above the room cards, or use the scene entity (`scene.<name>`) on dashboards, in automations and with Alexa. Scenes are stored in Home Assistant, never as ClearOne presets. Applying writes only values that differ (mute first, unmute last) and clamps volumes to today's caps.
 - Input gain and AGC are back-end settings: only in the sidebar panel, not as entities.
 
 Install:

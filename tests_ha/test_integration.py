@@ -186,3 +186,32 @@ async def test_options_choose_arylic_and_keep_caps(hass: HomeAssistant, socket_e
         await hass.config_entries.async_unload(entry.entry_id)
     finally:
         await fake.stop()
+
+
+
+async def test_scenes_as_entities(hass: HomeAssistant, hass_ws_client, socket_enabled) -> None:
+    fake = FakeClearOne()
+    entry = await _setup(hass, fake)
+    try:
+        ws = await hass_ws_client(hass)
+        await ws.send_json({"id": 1, "type": f"{DOMAIN}/scene_save", "name": "Downstairs music", "room_ids": ["kitchen-ext", "laundry"]})
+        msg = await ws.receive_json()
+        assert msg["success"], msg
+        await hass.async_block_till_done()
+        state = hass.states.get("scene.downstairs_music")
+        assert state is not None and [r["name"] for r in state.attributes["rooms"]] == ["Kitchen extension", "Laundry room"]
+        assert entry.options["scenes"][0]["name"] == "Downstairs music"
+
+        await hass.services.async_call("switch", "turn_on", {"entity_id": "switch.laundry_room_alexa"}, blocking=True)
+        await hass.services.async_call("scene", "turn_on", {"entity_id": "scene.downstairs_music"}, blocking=True)
+        await hass.async_block_till_done()
+        assert hass.states.get("switch.laundry_room_alexa").state == "off"
+
+        await ws.send_json({"id": 2, "type": f"{DOMAIN}/scene_delete", "scene_id": msg["result"]["scene_id"]})
+        assert (await ws.receive_json())["success"]
+        await hass.async_block_till_done()
+        assert hass.states.get("scene.downstairs_music") is None
+        assert entry.options["scenes"] == []
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await fake.stop()

@@ -25,7 +25,7 @@ def _device(hass: HomeAssistant) -> MultiroomDevice | None:
 def async_register_commands(hass: HomeAssistant) -> None:
     if hass.data.get(f"{DOMAIN}_ws"):
         return
-    for handler in (ws_subscribe, ws_room, ws_input, ws_cap):
+    for handler in (ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
         websocket_api.async_register_command(hass, handler)
     hass.data[f"{DOMAIN}_ws"] = True
 
@@ -125,3 +125,49 @@ def ws_cap(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg:
         connection.send_error(msg["id"], "failed", str(err))
         return
     connection.send_result(msg["id"])
+
+
+def _sync_call(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any], fn) -> None:
+    device = _device(hass)
+    if device is None:
+        connection.send_error(msg["id"], "not_loaded", "ClearOne Multiroom is not loaded")
+        return
+    try:
+        result = fn(device)
+    except ClearOneError as err:
+        connection.send_error(msg["id"], "failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/scene_save", vol.Required("name"): str, vol.Required("room_ids"): [str],
+})
+@callback
+def ws_scene_save(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _sync_call(hass, connection, msg, lambda d: {"scene_id": d.save_scene(msg["name"], msg["room_ids"])})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/scene_update", vol.Required("scene_id"): str,
+    vol.Optional("name"): str, vol.Optional("capture", default=False): bool,
+})
+@callback
+def ws_scene_update(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _sync_call(hass, connection, msg, lambda d: d.update_scene(msg["scene_id"], msg.get("name"), msg["capture"]))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/scene_delete", vol.Required("scene_id"): str})
+@callback
+def ws_scene_delete(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _sync_call(hass, connection, msg, lambda d: d.delete_scene(msg["scene_id"]))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/scene_apply", vol.Required("scene_id"): str})
+@websocket_api.async_response
+async def ws_scene_apply(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    device = _device(hass)
+    if device is None:
+        connection.send_error(msg["id"], "not_loaded", "ClearOne Multiroom is not loaded")
+        return
+    await _run(connection, msg, device.apply_scene(msg["scene_id"]))

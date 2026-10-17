@@ -20,6 +20,7 @@ Updated 2026-10-16 (Europe/Brussels).
 | 10 | Layout v2 | Claude Code | Cards first; connection details at the bottom; status pill and warning banner. |
 | 11 | "Playing" indicator | Claude Code | Audio presence (`ADPRESENT`) every 3 s. |
 | 12 | Repository clean-up | Claude Code | Renamed client to `clearone-telnet.js`, removed obsolete template, rewrote docs, prepared for GitHub. |
+| 15 | Scenes | Claude Code | Saved room states applied in one tap; scene entities for dashboards, automations and Alexa. |
 | 14 | Room speakers (Music Assistant) | Claude Code | media_player per room streaming via the Arylic; Arylic kept at full volume. |
 | 13 | Home Assistant integration | Claude Code | `custom_components/clearone_multiroom`: Python device layer, sidebar panel, room entities, config flow. Hardware read + gain write confirmed via the Python code. |
 
@@ -40,7 +41,8 @@ Updated 2026-10-16 (Europe/Brussels).
 - `device.py`: rooms/sources model, refresh (~30 queries, 0.7 s on hardware), presence poll, run loop with back-off, validated changes with readback (no HA imports).
 - `const.py`: installation mapping (rooms, sources, ranges).
 - `__init__.py`: config entry setup, background task, hub device, static path and sidebar panel.
-- `websocket.py`: `clearone_multiroom/subscribe`, `/room`, `/input`, `/cap`.
+- `websocket.py`: `clearone_multiroom/subscribe`, `/room`, `/input`, `/cap`, `/scene_save`, `/scene_update`, `/scene_delete`, `/scene_apply`.
+- `scene.py`: one scene entity per saved scene (added/removed live).
 - `number.py`, `switch.py`, `binary_sensor.py`, `media_player.py`, `entity.py`: room entities; `media_player.py` is the room speaker that streams via the Arylic.
 - `config_flow.py`: host/port/login/device ID, checked by connecting; options: Arylic media player.
 - `frontend/multiroom-panel.js`: the sidebar panel.

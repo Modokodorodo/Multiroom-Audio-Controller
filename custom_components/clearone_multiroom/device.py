@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import uuid
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -32,7 +33,8 @@ class MultiroomDevice:
     """Owns the single ClearOne session used by the panel and all entities."""
 
     def __init__(self, host: str, port: int, user: str, password: str, device_id: str = "0",
-                 caps: dict[str, float] | None = None, timeout: float = 3.0,
+                 caps: dict[str, float] | None = None, scenes: list[dict[str, Any]] | None = None,
+                 timeout: float = 3.0,
                  client_factory: Callable[[], ClearOneTelnet] | None = None) -> None:
         self.host, self.port, self.user, self.password, self.id = host, port, user, password, device_id
         self.timeout = timeout
@@ -51,6 +53,8 @@ class MultiroomDevice:
         self._listeners: list[Callable[[], None]] = []
         self._op = asyncio.Lock()  # a refresh and a change never interleave
         self.on_caps_changed: Callable[[dict[str, float]], None] | None = None
+        self.scenes: list[dict[str, Any]] = [dict(sc) for sc in (scenes or [])]
+        self.on_scenes_changed: Callable[[list[dict[str, Any]]], None] | None = None
 
     # ---- listeners -------------------------------------------------------------------------
     def add_listener(self, cb: Callable[[], None]) -> Callable[[], None]:
@@ -207,7 +211,8 @@ class MultiroomDevice:
                 "nextRetryAt": self.next_retry_at,
                 "device": {"host": self.host, "id": self.id, "firmware": self.firmware},
                 "inputRange": dict(INPUT_GAIN_RANGE), "rooms": [self.room(r["id"]) for r in self.rooms],
-                "inputs": [self.input(s["id"]) for s in self.sources]}
+                "inputs": [self.input(s["id"]) for s in self.sources],
+                "scenes": [self.scene_summary(sc) for sc in self.scenes]}
 
     # ---- changes ---------------------------------------------------------------------------------
     async def _change(self, command: str, check_query: str, expect: Callable[[str], bool]) -> None:
@@ -230,7 +235,7 @@ class MultiroomDevice:
             raise ClearOneError("Unknown source")
         return src
 
-    async def set_room_gain(self, room_id: str, gain_db: float) -> None:
+    async def set_room_gain(self, room_id: str, gain_db: float, refresh: bool = True) -> None:
         room = self._room_cfg(room_id)
         if isinstance(gain_db, bool) or not isinstance(gain_db, (int, float)) or not room["minDb"] <= gain_db <= room["maxDb"]:
             raise ClearOneError(f"Volume must be {room['minDb']} to {room['maxDb']} dB")
@@ -240,9 +245,10 @@ class MultiroomDevice:
             await self._change(f"GAIN {ch} O {text} A", f"GAIN {ch} O",
                                lambda r: bool(_GAIN.fullmatch(r)) and float(_GAIN.fullmatch(r)[1]) == float(text))
         finally:
-            await self._safe_refresh()
+            if refresh:
+                await self._safe_refresh()
 
-    async def set_room_mute(self, room_id: str, muted: bool) -> None:
+    async def set_room_mute(self, room_id: str, muted: bool, refresh: bool = True) -> None:
         room = self._room_cfg(room_id)
         if not isinstance(muted, bool):
             raise ClearOneError("Mute must be on or off")
@@ -250,9 +256,10 @@ class MultiroomDevice:
         try:
             await self._change(f"MUTE {ch} O {v}", f"MUTE {ch} O", lambda r: r == v)
         finally:
-            await self._safe_refresh()
+            if refresh:
+                await self._safe_refresh()
 
-    async def set_room_source(self, room_id: str, source_id: str, on: bool) -> None:
+    async def set_room_source(self, room_id: str, source_id: str, on: bool, refresh: bool = True) -> None:
         room, src = self._room_cfg(room_id), self._source_cfg(source_id)
         if not isinstance(on, bool):
             raise ClearOneError("Source on/off must be on or off")
@@ -261,7 +268,8 @@ class MultiroomDevice:
         try:
             await self._change(f"{q} {v}", q, lambda r: r == v)
         finally:
-            await self._safe_refresh()
+            if refresh:
+                await self._safe_refresh()
 
     async def set_input_gain(self, source_id: str, gain_db: float) -> None:
         src = self._source_cfg(source_id)
@@ -330,3 +338,108 @@ class MultiroomDevice:
             await self.refresh()
         except ClearOneError as err:
             _LOGGER.debug("Refresh after change failed: %s", err)
+
+    # ---- scenes ------------------------------------------------------------------------------------
+    # A scene stores, per included room: mute, volume and which sources are on. Stored in the app
+    # (config entry options), never as ClearOne presets.
+    MAX_SCENES = 30
+
+    def scene_summary(self, scene: dict[str, Any]) -> dict[str, Any]:
+        names = {r["id"]: r["name"] for r in self.rooms}
+        src = {s["id"]: s["name"] for s in self.sources}
+        rooms = []
+        for room_id, t in scene["rooms"].items():
+            if room_id in names:
+                on = [src[k] for k, v in t["sources"].items() if v and k in src]
+                rooms.append({"id": room_id, "name": names[room_id], "gainDb": t["gainDb"], "muted": t["muted"], "sources": on})
+        return {"id": scene["id"], "name": scene["name"], "rooms": rooms}
+
+    def _snapshot_rooms(self, room_ids: list[str]) -> dict[str, Any]:
+        if not room_ids:
+            raise ClearOneError("Choose at least one room")
+        rooms = {}
+        for room_id in room_ids:
+            r = self.room(room_id)  # raises for unknown rooms
+            if r["gainDb"] is None or r["muted"] is None:
+                raise ClearOneError("Room state is not known yet; wait until the ClearOne is connected")
+            rooms[room_id] = {"gainDb": r["gainDb"], "muted": r["muted"], "sources": {m["id"]: m["on"] for m in r["mix"]}}
+        return rooms
+
+    @staticmethod
+    def _clean_name(name: Any) -> str:
+        if not isinstance(name, str) or not 1 <= len(name.strip()) <= 40:
+            raise ClearOneError("Scene name must be 1 to 40 characters")
+        return name.strip()
+
+    def _scene(self, scene_id: str) -> dict[str, Any]:
+        sc = next((x for x in self.scenes if x["id"] == scene_id), None)
+        if sc is None:
+            raise ClearOneError("Unknown scene")
+        return sc
+
+    def _scenes_changed(self) -> None:
+        if self.on_scenes_changed:
+            self.on_scenes_changed([dict(x) for x in self.scenes])
+        self._notify()
+
+    def save_scene(self, name: str, room_ids: list[str]) -> str:
+        """New scene from the current state of the given rooms."""
+        name = self._clean_name(name)
+        if any(x["name"].lower() == name.lower() for x in self.scenes):
+            raise ClearOneError("A scene with this name already exists")
+        if len(self.scenes) >= self.MAX_SCENES:
+            raise ClearOneError(f"At most {self.MAX_SCENES} scenes")
+        scene = {"id": uuid.uuid4().hex[:8], "name": name, "rooms": self._snapshot_rooms(room_ids)}
+        self.scenes.append(scene)
+        self._scenes_changed()
+        return scene["id"]
+
+    def update_scene(self, scene_id: str, name: str | None = None, capture: bool = False) -> None:
+        """Rename and/or replace the stored values with the rooms' current state."""
+        sc = self._scene(scene_id)
+        if name is not None:
+            name = self._clean_name(name)
+            if any(x["name"].lower() == name.lower() and x["id"] != scene_id for x in self.scenes):
+                raise ClearOneError("A scene with this name already exists")
+        rooms = self._snapshot_rooms(list(sc["rooms"])) if capture else sc["rooms"]
+        if name is not None:
+            sc["name"] = name
+        sc["rooms"] = rooms
+        self._scenes_changed()
+
+    def delete_scene(self, scene_id: str) -> None:
+        self._scene(scene_id)
+        self.scenes = [x for x in self.scenes if x["id"] != scene_id]
+        self._scenes_changed()
+
+    async def apply_scene(self, scene_id: str) -> None:
+        """Apply room by room: mute first, then sources, then volume (clamped to today's cap), unmute last.
+        Only values that differ are written; one refresh at the end."""
+        sc = self._scene(scene_id)
+        if self.status != "ready":
+            raise ClearOneError("Device is not ready; retry shortly")
+        errors = []
+        try:
+            for room_id, t in sc["rooms"].items():
+                room = next((r for r in self.rooms if r["id"] == room_id), None)
+                if room is None:
+                    continue
+                try:
+                    cur = self.room(room_id)
+                    if t["muted"] and cur["muted"] is not True:
+                        await self.set_room_mute(room_id, True, refresh=False)
+                    for m in cur["mix"]:
+                        want = t["sources"].get(m["id"])
+                        if want is not None and want != m["on"]:
+                            await self.set_room_source(room_id, m["id"], want, refresh=False)
+                    gain = min(max(t["gainDb"], room["minDb"]), room["maxDb"])
+                    if gain != cur["gainDb"]:
+                        await self.set_room_gain(room_id, gain, refresh=False)
+                    if not t["muted"] and cur["muted"] is not False:
+                        await self.set_room_mute(room_id, False, refresh=False)
+                except ClearOneError as err:
+                    errors.append(f"{room['name']}: {err}")
+        finally:
+            await self._safe_refresh()
+        if errors:
+            raise ClearOneError("; ".join(errors))

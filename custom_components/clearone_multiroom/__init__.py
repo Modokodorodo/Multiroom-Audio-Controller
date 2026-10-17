@@ -15,11 +15,11 @@ from homeassistant.core import Event, EventStateChangedData, HomeAssistant, call
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers import device_registry as dr
 
-from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, PANEL_COMPONENT, PANEL_URL, STATIC_URL
+from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, OPT_SCENES, PANEL_COMPONENT, PANEL_URL, STATIC_URL
 from .device import MultiroomDevice
 from .websocket import async_register_commands
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SWITCH]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SCENE, Platform.SWITCH]
 FRONTEND_DIR = pathlib.Path(__file__).parent / "frontend"
 VERSION = json.loads((pathlib.Path(__file__).parent / "manifest.json").read_text())["version"]
 
@@ -30,12 +30,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
     device = MultiroomDevice(
         entry.data[CONF_HOST], entry.data[CONF_PORT], entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD],
         entry.data.get(CONF_DEVICE_ID, "0"), caps=entry.options.get(OPT_CAPS),
+        scenes=entry.options.get(OPT_SCENES),
     )
 
     def save_caps(caps: dict[str, float]) -> None:
         hass.config_entries.async_update_entry(entry, options={**entry.options, OPT_CAPS: caps})
 
+    def save_scenes(scenes: list) -> None:
+        hass.config_entries.async_update_entry(entry, options={**entry.options, OPT_SCENES: scenes})
+
     device.on_caps_changed = save_caps
+    device.on_scenes_changed = save_scenes
     # The ClearOne itself; each room device points to it.
     dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id, identifiers={(DOMAIN, entry.entry_id)},
