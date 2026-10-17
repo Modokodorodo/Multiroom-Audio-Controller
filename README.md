@@ -1,98 +1,91 @@
-# Multiroom Audio Controller
+# ClearOne Multiroom for Home Assistant
 
-A local browser interface for a **ClearOne CONVERGE Pro 880T** used as a multi-room audio matrix. A small Node.js service talks to the ClearOne over Telnet; the browser talks only to that service.
+A **Home Assistant custom integration** (installable with HACS) that turns a **ClearOne CONVERGE Pro 880T** audio matrix into a multi-room audio system you control from Home Assistant: a sidebar panel, room entities for dashboards and automations, a speaker per room for Music Assistant, and scenes.
 
-**Features (live mode)**
+It talks to the ClearOne directly over Telnet from inside Home Assistant. No extra service, no cloud, no MQTT.
 
-- **Rooms tab**: per-room volume (with a per-room cap), mute, and which sources play in the room (sources can mix). A "Playing" badge shows when a routed source has signal.
-- **Inputs tab**: input gain per source, and automatic gain control (AGC) on/off plus its settings.
-- **Settings**: per-room volume caps.
-- Connection status with automatic reconnect; the last known values stay visible while the device is unreachable.
-- A **mock mode** with invented demo rooms, for trying the interface without hardware.
+> The repository also contains the original stand-alone **Mac app** (Node.js) this started as; see [Stand-alone Mac app](#stand-alone-mac-app). Most people want the Home Assistant integration.
 
-No dependencies, no build step, no cloud service. Node.js 22 or newer is the only requirement.
+## What you get in Home Assistant
 
-## Home Assistant integration
+- **Multiroom sidebar panel**, following your Home Assistant theme:
+  - **Rooms**: volume per room (with a cap), mute, and which sources play in each room (sources can play together). A "Playing" badge shows when a routed source has signal.
+  - **Scenes**: save the current state of chosen rooms as a named scene and apply it with one tap.
+  - **Inputs**: input gain per source, and automatic gain control (AGC) on/off plus its settings. These are back-end settings, so they are only in the panel.
+  - **Settings**: per-room volume caps.
+  - **Power**: optional on/off button for the relay that powers the ClearOne and the amplifier.
+  - Connection status with automatic reconnect; the last known values stay visible while the device is unreachable.
+- **A device per room**, in an area with the room's name, with entities for dashboards, automations and Alexa routines: **Volume** (number, capped), **Mute** (switch), one **switch per source**, **Playing** (binary sensor).
+- **A speaker per room for Music Assistant** (`media_player.<room>`). It streams through the Arylic network streamer: playing to a room switches Arylic on in that room; the speaker's volume and mute are the room's volume and mute in the ClearOne. There is one Arylic, so all room speakers share one stream. The Arylic itself is kept at 100 % volume.
+- **Scene entities** (`scene.<name>`) for every saved scene, usable on dashboards, in automations and with Alexa. Scenes are stored in Home Assistant, never as ClearOne presets.
 
-`custom_components/clearone_multiroom` runs the same control inside Home Assistant, with no separate service:
+## Install
 
-- A **Multiroom** item in the sidebar with the same interface (Rooms, Inputs, Settings), following your Home Assistant theme.
-- Per room, a Home Assistant device (assigned to an area with the room's name) with: **Volume** (number, capped), **Mute** (switch), one **switch per source** (Arylic, Birds, Alexa), and **Playing** (binary sensor). Use them on dashboards, in automations and in Alexa routines.
-- A **speaker per room** (`media_player.toilet`, `media_player.kitchen_extension`, `media_player.laundry_room`) for Music Assistant and dashboards. It streams through the Arylic: playing to a room switches Arylic on in that room and forwards the media to the Arylic's media player; turning it off switches Arylic off there (and pauses the Arylic when no room is left). Its volume is the room volume (0–100 % = room minimum to cap) and its mute is the room mute. There is one Arylic, so all room speakers share one stream.
-- The Arylic is kept at **100 % volume**; all volume control happens in the ClearOne.
-- **Power**: with a power switch configured, the panel shows a ⏻ button (switching off asks for confirmation) and "switched off" instead of a connection warning. After switching on it retries the connection every 5 s for 3 minutes while the ClearOne boots.
-- **Scenes**: set the rooms the way you want, then save it on the panel's Scenes tab (sources on/off, volume and mute for the rooms you pick). Apply with one tap above the room cards, or use the scene entity (`scene.<name>`) on dashboards, in automations and with Alexa. Scenes are stored in Home Assistant, never as ClearOne presets. Applying writes only values that differ (mute first, unmute last) and clamps volumes to today's caps.
-- Input gain and AGC are back-end settings: only in the sidebar panel, not as entities.
+1. **HACS** → ⋮ → **Custom repositories** → add `https://github.com/Modokodorodo/Multiroom-Audio-Controller` as type **Integration** → download **ClearOne Multiroom**.
+   Or copy `custom_components/clearone_multiroom` into your Home Assistant `config/custom_components/` folder.
+2. **Restart Home Assistant**, then refresh the browser page.
+3. **Settings → Devices & services → Add integration → ClearOne Multiroom.** Enter host, port 23, Console username and password, and device ID (usually 0). The login is checked before saving and stored by Home Assistant.
+4. **ClearOne Multiroom → Configure** (optional):
+   - **Arylic media player**: the **LinkPlay** entity of the Arylic (not Music Assistant's copy). Enables streaming on the room speakers.
+   - **Power switch**: the relay that switches the ClearOne and the amplifier. Adds the ⏻ button to the panel.
+5. **Music Assistant → Settings → Providers → Home Assistant MediaPlayers**: enable the room speakers.
 
-Install:
+After each update: restart Home Assistant, then refresh the page.
 
-1. **HACS**: HACS → ⋮ → Custom repositories → add `https://github.com/Modokodorodo/Multiroom-Audio-Controller` as type *Integration* → download **ClearOne Multiroom**. Or copy `custom_components/clearone_multiroom` into your Home Assistant `config/custom_components/` folder.
-2. Restart Home Assistant.
-3. Settings → Devices & services → Add integration → **ClearOne Multiroom**. Enter host, port 23, Console username and password, device ID 0. The login is checked before saving and stored by Home Assistant, not in this repository.
-4. Integration → **Configure**: choose the Arylic's media player (the **LinkPlay** entity, not Music Assistant's copy). This enables streaming on the room speakers. Optionally choose the **power switch** (the relay that switches the ClearOne and the amplifier); the panel then gets an on/off button.
-5. Music Assistant → Settings → Providers: add or open **Home Assistant MediaPlayers** and enable the three room speakers.
+### Adapting to your installation
 
-Run only one controller against the ClearOne for daily use (this integration *or* the Mac app); both work side by side, but each keeps its own connection.
-
-## Run the Mac app
-
-```sh
-node --version          # 22 or newer
-npm test                # Mac app tests (simulated device)
-python3 -m unittest discover -s tests          # integration device tests (Python 3.11+)
-python3 -m pytest tests_ha                       # integration in a Home Assistant test instance
-                                                 # (needs: pip install pytest-homeassistant-custom-component)
-npm start               # mock mode: http://127.0.0.1:8787
-```
-
-Live mode against the real device:
-
-```sh
-CLEARONE_HOST=192.168.1.175 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
-```
-
-Then open **http://127.0.0.1:8787** (use the numeric address; other host names are rejected). Stop with Control-C. Use `PORT=8788` for another port and `CLEARONE_ID` if the device ID is not 0.
-
-Credentials are read from the environment only. Never put them in project files.
-
-## Configuration
-
-- `config/live-rooms.json`: rooms (name, output, volume range), sources (route and input channels) and the input-gain range. This is the verified mapping for this installation.
-- `config/caps.local.json`: volume caps saved from the Settings dialog (git-ignored; overrides the defaults).
-- `config/mock.js`: invented demo data for mock mode only.
+The room/source mapping is set in [`custom_components/clearone_multiroom/const.py`](custom_components/clearone_multiroom/const.py) and currently describes one specific installation: three mono rooms on outputs 1–3, and sources Arylic (processing block A, inputs M1+M2), Birds (M3) and Alexa (M4). Change `ROOMS` and `SOURCES` there for another setup, and widen the command whitelist in `clearone.py` if you use other outputs or inputs.
 
 ## Safety design
 
-- The Telnet client sends only commands matching an explicit whitelist (`src/clearone-telnet.js`): queries, plus absolute gain, explicit mute, matrix on/off for the configured sources and rooms, input gain and AGC for inputs 1–4. Anything else is refused before it reaches the network.
+- The Telnet client sends only commands matching an explicit whitelist (`clearone.py`): queries, plus absolute gain, explicit mute, matrix on/off for the configured sources and rooms, input gain and AGC for the configured inputs. Anything else is refused before it reaches the network.
 - Every change is validated (caps and documented ranges), sent once, and confirmed by reading the value back. A mismatch shows an error; nothing is retried or replayed after a reconnect.
 - Gain is always written as absolute (`A`), never relative. The matrix is never cleared; presets, macros and other DSP settings are never written.
-- The web service listens on 127.0.0.1 only and rejects foreign `Host`/`Origin` headers.
 - Keep the ClearOne off the internet: Telnet is unencrypted.
 
-## Layout
+## Tests
+
+```sh
+python3 -m unittest discover -s tests   # device layer against a simulated ClearOne (Python 3.11+)
+python3 -m pytest tests_ha              # the integration in a Home Assistant test instance
+                                        # (pip install pytest-homeassistant-custom-component)
+npm test                                # stand-alone Mac app
+```
+
+## Stand-alone Mac app
+
+The same controls as a local web page served by a small Node.js service (Node 22+, no dependencies). It has rooms, inputs and caps, but no scenes, room speakers or power button.
+
+```sh
+npm start                                        # mock mode with demo rooms: http://127.0.0.1:8787
+CLEARONE_HOST=192.168.1.175 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
+```
+
+Open **http://127.0.0.1:8787** (numeric address only). Credentials come from the environment, never from files. Mapping: `config/live-rooms.json`; caps saved from the page: `config/caps.local.json` (git-ignored). The service listens on 127.0.0.1 only and rejects foreign `Host`/`Origin` headers.
+
+Use one controller for daily use (the integration *or* the Mac app); they work side by side, but each keeps its own connection to the ClearOne.
+
+## Repository layout
 
 ```
-src/server.js          HTTP service and API (mock or live)
-src/live-controller.js live state, polling, validated changes
-src/clearone-telnet.js Telnet client with command whitelist
-src/controller.js      mock-mode controller
-src/mock-device.js     simulated device for mock mode
-src/protocol.js        command formatters/parser used by mock mode and tests
-public/                browser UI (plain HTML/CSS/JS)
-config/                room/source mapping and mock data
-test/                  automated tests (node --test)
-docs/                  project knowledge, see below
+custom_components/clearone_multiroom/   Home Assistant integration
+  clearone.py, device.py                 Telnet client and device logic (no Home Assistant imports)
+  const.py                               room/source mapping of the installation
+  frontend/multiroom-panel.js            sidebar panel
+tests/, tests_ha/                        integration tests
+src/, public/, config/, test/            stand-alone Mac app
+docs/                                    project knowledge, see below
 ```
 
 ## Documentation
 
-- [HANDOFF.md](HANDOFF.md): current state and next steps (start here when continuing).
+- [HANDOFF.md](HANDOFF.md): current state and next steps (start here when continuing development).
 - [docs/PROTOCOL.md](docs/PROTOCOL.md): protocol facts with manual page references and observed device behavior.
 - [docs/HARDWARE.md](docs/HARDWARE.md): hardware-confirmed findings and tests, in date order.
 - [docs/MAPPING.md](docs/MAPPING.md): room, source and channel mapping.
-- [docs/PROGRESS.md](docs/PROGRESS.md): milestones and code map.
+- [docs/PROGRESS.md](docs/PROGRESS.md): milestones, code map and API.
 - [docs/OPPORTUNITIES.md](docs/OPPORTUNITIES.md): backlog and recommendations.
 - [docs/PLAN.md](docs/PLAN.md): phases and reference files.
 - [PROJECT_BRIEF.md](PROJECT_BRIEF.md) and [START_HERE.md](START_HERE.md): the original project brief.
 
-The ClearOne manuals used as references (Serial Command Guide 800-151-880 Rev 3.2 and the CONVERGE Pro manual) are not included in this repository because of copyright. Download them from ClearOne and place them in `docs/`.
+The ClearOne manuals used as references (Serial Command Guide 800-151-880 Rev 3.2 and the CONVERGE Pro manual) are not included because of copyright. Download them from ClearOne and place them in `docs/`.
