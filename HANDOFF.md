@@ -12,6 +12,8 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 
 **Milestone 15: scenes** (version 0.3.0). Stored in the config entry options (`scenes`); created, updated (rename / capture current state), deleted and applied from the panel's Scenes tab, with quick-apply buttons above the room cards; each scene is a `scene` entity (added/removed live). Applying: per room, mute first, sources, volume clamped to today's cap, unmute last; only differing values are written; one refresh at the end. Tests: 9 device + 5 Home Assistant tests pass (simulated). Not yet tested on hardware or in the user's Home Assistant.
 
+**Milestone 16: power switch in the panel** (version 0.4.0). Options: `power_entity` (switch / input_boolean / light; the KinCony relay that powers the ClearOne and the amplifier). Panel: ⏻ button with confirmation on switch-off, "switched off" banner with Turn on, "starting up" while connecting. `clearone_multiroom/power` calls homeassistant.turn_on/off, then `device.kick()` retries every 5 s for 3 minutes. Panel subscriptions are now held at hass level and look the device up on every push, so the panel keeps working after the entry reloads. A tests-found bug (state listener without @callback ran in a worker thread) was fixed before release. 9 device + 6 HA tests pass. Not tested with the real relay.
+
 | Area | State |
 |---|---|
 | Rooms | Toilet (O1), Kitchen extension (O2), Laundry room (O3). Mono, one output each. O4–O12 are expansion outputs and hidden. |
@@ -19,7 +21,7 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 | Inputs tab | Input gain per source; AGC on/off and settings in a dialog. Arylic = M1+M2 written together. |
 | Settings | Per-room volume caps (Toilet -25, Kitchen extension -15, Laundry room -20 dB, confirmed by the user). |
 | Connection | Status pill, warning banner, automatic reconnect with back-off (5–30 s); no writes are replayed. |
-| Tests | `npm test`: 12 passing (Mac app). Python: 9 device tests + 5 Home Assistant tests passing. |
+| Tests | `npm test`: 12 passing (Mac app). Python: 9 device tests + 6 Home Assistant tests passing. |
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, and [docs/HARDWARE.md](docs/HARDWARE.md) for every hardware test performed.
 

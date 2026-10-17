@@ -215,3 +215,48 @@ async def test_scenes_as_entities(hass: HomeAssistant, hass_ws_client, socket_en
         await hass.config_entries.async_unload(entry.entry_id)
     finally:
         await fake.stop()
+
+
+async def test_power_switch_in_panel(hass: HomeAssistant, hass_ws_client, socket_enabled) -> None:
+    """The configured power switch (stand-in: input_boolean) is shown and switched via the panel."""
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "homeassistant", {})
+    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"rack": {"name": "Rack power", "initial": True}}})
+    fake = FakeClearOne()
+    port = await fake.start()
+    entry = MockConfigEntry(domain=DOMAIN, title="ClearOne test", unique_id="127.0.0.1_0",
+                            data={"host": "127.0.0.1", "port": port, "username": "u", "password": "p", "device_id": "0"},
+                            options={"power_entity": "input_boolean.rack"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    try:
+        ws = await hass_ws_client(hass)
+        await ws.send_json({"id": 1, "type": f"{DOMAIN}/subscribe"})
+        assert (await ws.receive_json())["success"]
+        event = (await ws.receive_json())["event"]
+        assert event["power"] == {"entity": "input_boolean.rack", "name": "Rack power", "on": True}
+
+        async def call(msg_id: int, on: bool) -> list:
+            """Send a power command; return the panel events received until its result."""
+            await ws.send_json({"id": msg_id, "type": f"{DOMAIN}/power", "on": on})
+            events = []
+            while True:
+                msg = await ws.receive_json()
+                if msg.get("type") == "event":
+                    events.append(msg["event"])
+                elif msg.get("id") == msg_id:
+                    assert msg["success"], msg
+                    return events
+
+        events = await call(2, False)
+        assert hass.states.get("input_boolean.rack").state == "off"
+        await hass.async_block_till_done()
+        while not any(e["power"]["on"] is False for e in events):  # the change is pushed to the panel
+            events.append((await ws.receive_json())["event"])
+        await call(3, True)
+        assert hass.states.get("input_boolean.rack").state == "on"
+        assert entry.runtime_data._fast_until > 0  # retries quickly while the ClearOne boots
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await fake.stop()

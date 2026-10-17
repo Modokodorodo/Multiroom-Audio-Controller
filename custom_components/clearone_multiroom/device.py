@@ -52,6 +52,9 @@ class MultiroomDevice:
         self.input_state: dict[str, dict[str, Any]] = {}
         self._listeners: list[Callable[[], None]] = []
         self._op = asyncio.Lock()  # a refresh and a change never interleave
+        self._wake = asyncio.Event()
+        self._fast_until = 0.0
+        self.power_entity: str | None = None  # set by the integration; shown in the panel
         self.on_caps_changed: Callable[[dict[str, float]], None] | None = None
         self.scenes: list[dict[str, Any]] = [dict(sc) for sc in (scenes or [])]
         self.on_scenes_changed: Callable[[list[dict[str, Any]]], None] | None = None
@@ -93,8 +96,17 @@ class MultiroomDevice:
                 self.next_retry_at = datetime.fromtimestamp(
                     datetime.now(timezone.utc).timestamp() + delay, timezone.utc).isoformat()
                 self._notify()
-                await asyncio.sleep(delay)
-                delay = min(delay * 2, 30)
+                try:
+                    await asyncio.wait_for(self._wake.wait(), delay)
+                except asyncio.TimeoutError:
+                    pass
+                self._wake.clear()
+                delay = 5 if loop.time() < self._fast_until else min(delay * 2, 30)
+
+    def kick(self) -> None:
+        """Power was just switched on: retry now and every 5 s for 3 minutes while the ClearOne boots."""
+        self._fast_until = asyncio.get_running_loop().time() + 180
+        self._wake.set()
 
     async def connect(self) -> None:
         self.close()

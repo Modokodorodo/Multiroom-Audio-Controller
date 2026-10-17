@@ -12,7 +12,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
 
 from .clearone import ClearOneAuthError, ClearOneError, ClearOneTelnet
-from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY
+from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_POWER_ENTITY
 
 
 class MultiroomConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -51,19 +51,22 @@ class MultiroomConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class MultiroomOptionsFlow(OptionsFlow):
-    """Choose the Arylic's media player; the room speakers stream through it."""
+    """Choose the Arylic's media player (room speakers stream through it) and the power switch."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            options = {**self.config_entry.options}  # keep the volume caps
-            if user_input.get(OPT_ARYLIC_ENTITY):
-                options[OPT_ARYLIC_ENTITY] = user_input[OPT_ARYLIC_ENTITY]
-            else:
-                options.pop(OPT_ARYLIC_ENTITY, None)
+            options = {**self.config_entry.options}  # keep caps and scenes
+            for key in (OPT_ARYLIC_ENTITY, OPT_POWER_ENTITY):
+                if user_input.get(key):
+                    options[key] = user_input[key]
+                else:
+                    options.pop(key, None)
             return self.async_create_entry(data=options)
         own = [e.entity_id for e in er.async_entries_for_config_entry(er.async_get(self.hass), self.config_entry.entry_id)]
         schema = vol.Schema({
             vol.Optional(OPT_ARYLIC_ENTITY, description={"suggested_value": self.config_entry.options.get(OPT_ARYLIC_ENTITY)}):
                 EntitySelector(EntitySelectorConfig(domain="media_player", exclude_entities=own)),
+            vol.Optional(OPT_POWER_ENTITY, description={"suggested_value": self.config_entry.options.get(OPT_POWER_ENTITY)}):
+                EntitySelector(EntitySelectorConfig(domain=["switch", "input_boolean", "light"])),
         })
         return self.async_show_form(step_id="init", data_schema=schema)

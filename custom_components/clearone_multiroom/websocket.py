@@ -25,9 +25,27 @@ def _device(hass: HomeAssistant) -> MultiroomDevice | None:
 def async_register_commands(hass: HomeAssistant) -> None:
     if hass.data.get(f"{DOMAIN}_ws"):
         return
-    for handler in (ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
+    for handler in (ws_power, ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
         websocket_api.async_register_command(hass, handler)
     hass.data[f"{DOMAIN}_ws"] = True
+
+
+SUBSCRIBERS = f"{DOMAIN}_ws_subscribers"
+
+
+def _power(hass: HomeAssistant, device: MultiroomDevice) -> dict[str, Any] | None:
+    entity = device.power_entity
+    if not entity:
+        return None
+    st = hass.states.get(entity)
+    return {"entity": entity, "name": st.attributes.get("friendly_name", entity) if st else entity,
+            "on": st.state == "on" if st and st.state in ("on", "off") else None}
+
+
+@callback
+def async_notify_subscribers(hass: HomeAssistant) -> None:
+    for forward in list(hass.data.get(SUBSCRIBERS, ())):
+        forward()
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe"})
@@ -41,11 +59,34 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
 
     @callback
     def forward() -> None:
-        connection.send_message(websocket_api.event_message(msg["id"], device.state()))
+        current = _device(hass)  # looked up each time, so the panel keeps working after a reload
+        if current is not None:
+            connection.send_message(websocket_api.event_message(msg["id"], {**current.state(), "power": _power(hass, current)}))
 
-    connection.subscriptions[msg["id"]] = device.add_listener(forward)
+    subscribers = hass.data.setdefault(SUBSCRIBERS, set())
+    subscribers.add(forward)
+    connection.subscriptions[msg["id"]] = lambda: subscribers.discard(forward)
     connection.send_result(msg["id"])
     forward()
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/power", vol.Required("on"): bool})
+@websocket_api.async_response
+async def ws_power(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Switch the ClearOne and amplifier power (the configured switch entity)."""
+    device = _device(hass)
+    if device is None or not device.power_entity:
+        connection.send_error(msg["id"], "not_configured", "No power switch configured (integration options)")
+        return
+    try:
+        await hass.services.async_call("homeassistant", "turn_on" if msg["on"] else "turn_off",
+                                       {"entity_id": device.power_entity}, blocking=True)
+    except Exception as err:  # noqa: BLE001 - report any service failure to the panel
+        connection.send_error(msg["id"], "failed", str(err))
+        return
+    if msg["on"]:
+        device.kick()
+    connection.send_result(msg["id"])
 
 
 async def _run(connection: websocket_api.ActiveConnection, msg: dict[str, Any], coro) -> None:

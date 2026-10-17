@@ -17,6 +17,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn.primary{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color,#fff)}
 .btn:disabled{opacity:.5;cursor:default}
 .banner{border:1px solid var(--warning-color);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:14px}
+.banner .btn{margin-left:8px}.btn.power{min-width:72px}
 .banner.error{border-color:var(--error-color);color:var(--error-color)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--divider-color);margin-bottom:16px}
 .tabs button{border:none;background:none;padding:10px 16px;color:var(--secondary-text-color);border-bottom:3px solid transparent;margin-bottom:-1px}
@@ -112,7 +113,7 @@ class ClearOneMultiroomPanel extends HTMLElement {
     r.innerHTML = `<style>${CSS}</style>
       <div class="toolbar"><span id="menu"></span><span class="title">Multiroom</span>
         <a class="pill" id="pill" href="#conn"><span class="dot" id="pill-dot"></span><span id="pill-text">Loading…</span></a>
-        <button class="btn" id="open-settings">Settings</button></div>
+        <button class="btn power" id="power" hidden></button><button class="btn" id="open-settings">Settings</button></div>
       <main>
         <div id="banner" class="banner" hidden></div><div id="error" class="banner error" role="alert" hidden></div>
         <nav class="tabs" role="tablist"><button role="tab" id="tab-rooms">Rooms</button><button role="tab" id="tab-scenes">Scenes</button><button role="tab" id="tab-inputs">Inputs</button></nav>
@@ -202,13 +203,37 @@ class ClearOneMultiroomPanel extends HTMLElement {
     if (!this.shadowRoot.getElementById('rooms')) return;
     const r = this.shadowRoot, s = this._state, ready = s?.status === 'ready';
     const err = r.getElementById('error'); err.hidden = !this._error; err.textContent = this._error;
-    const pillText = !s ? 'Loading…' : ready ? 'Connected' : s.status === 'connecting' ? 'Connecting…' : 'Not reachable';
+    const power = s?.power, off = power?.on === false;
+    const pillText = !s ? 'Loading…' : ready ? 'Connected' : off ? 'Switched off' : s.status === 'connecting' ? 'Connecting…' : 'Not reachable';
+    const pw = r.getElementById('power');
+    pw.hidden = !power;
+    if (power) {
+      pw.textContent = `⏻ ${power.on ? 'On' : power.on === false ? 'Off' : '?'}`;
+      pw.classList.toggle('primary', power.on === true);
+      pw.disabled = !!this._pending || power.on === null;
+      pw.setAttribute('aria-label', `ClearOne and amplifier power: ${power.on ? 'on' : 'off'}`);
+      pw.onclick = () => {
+        if (power.on && !confirm('Switch off the ClearOne and the amplifier? All rooms go silent.')) return;
+        this._call('power', {on: !power.on}, 'power');
+      };
+    }
     r.getElementById('pill-text').textContent = pillText;
     r.getElementById('pill-dot').classList.toggle('off', !ready);
     r.getElementById('pill').classList.toggle('warn', !!s && !ready);
     const banner = r.getElementById('banner');
     banner.hidden = !s || ready;
-    banner.textContent = s && !ready ? 'Cannot reach the ClearOne. Retrying automatically; controls are disabled until it is back.' : '';
+    banner.replaceChildren();
+    if (s && !ready) {
+      if (off) {
+        banner.append('The ClearOne and the amplifier are switched off. ');
+        const on = document.createElement('button'); on.className = 'btn primary'; on.textContent = 'Turn on';
+        on.disabled = !!this._pending; on.onclick = () => this._call('power', {on: true}, 'power');
+        banner.append(on);
+      } else {
+        banner.append(power?.on ? 'Starting up the ClearOne… connecting automatically; controls are disabled until it is ready.'
+          : 'Cannot reach the ClearOne. Retrying automatically; controls are disabled until it is back.');
+      }
+    }
     if (s) {
       const last = s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString() : 'never';
       r.getElementById('c-status').textContent = `ClearOne ${s.device.host} · ${ready ? 'connected' : s.status}`;

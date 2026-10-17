@@ -15,9 +15,9 @@ from homeassistant.core import Event, EventStateChangedData, HomeAssistant, call
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers import device_registry as dr
 
-from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, OPT_SCENES, PANEL_COMPONENT, PANEL_URL, STATIC_URL
+from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, OPT_POWER_ENTITY, OPT_SCENES, PANEL_COMPONENT, PANEL_URL, STATIC_URL
 from .device import MultiroomDevice
-from .websocket import async_register_commands
+from .websocket import async_notify_subscribers, async_register_commands
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SCENE, Platform.SWITCH]
 FRONTEND_DIR = pathlib.Path(__file__).parent / "frontend"
@@ -47,6 +47,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
         name="ClearOne CONVERGE Pro 880T", manufacturer="ClearOne", model="CONVERGE Pro 880T",
     )
     entry.runtime_data = device
+    power = device.power_entity = entry.options.get(OPT_POWER_ENTITY)
+
+    @callback
+    def push_to_panel(_event: Event | None = None) -> None:
+        async_notify_subscribers(hass)
+
+    entry.async_on_unload(device.add_listener(push_to_panel))
+    if power:  # the panel shows the switch; push its changes too (must run in the event loop: @callback)
+        entry.async_on_unload(async_track_state_change_event(hass, [power], push_to_panel))
     # Connects, polls and reconnects in the background; cancelled automatically on unload.
     entry.async_create_background_task(hass, device.run(), f"{DOMAIN}_{entry.entry_id}")
 
@@ -58,8 +67,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
         entry.async_on_unload(_keep_arylic_at_full_volume(hass, arylic))
 
     async def options_updated(hass: HomeAssistant, entry: MultiroomConfigEntry) -> None:
-        # Cap changes are applied live; only a different Arylic player needs a reload.
-        if entry.options.get(OPT_ARYLIC_ENTITY) != arylic:
+        # Caps and scenes are applied live; a different Arylic player or power switch needs a reload.
+        if entry.options.get(OPT_ARYLIC_ENTITY) != arylic or entry.options.get(OPT_POWER_ENTITY) != power:
             await hass.config_entries.async_reload(entry.entry_id)
 
     entry.async_on_unload(entry.add_update_listener(options_updated))

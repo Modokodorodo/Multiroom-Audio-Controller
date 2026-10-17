@@ -41,10 +41,11 @@
   "options": {
     "step": {
       "init": {
-        "title": "Music Assistant / room speakers",
-        "description": "Choose the Arylic's media player. Each room speaker streams through it: playing to a room switches Arylic on in that room.",
+        "title": "Options",
+        "description": "Arylic media player: each room speaker streams through it. Power switch: the relay that switches the ClearOne and the amplifier; it gets an on/off button in the Multiroom panel.",
         "data": {
-          "arylic_entity": "Arylic media player"
+          "arylic_entity": "Arylic media player",
+          "power_entity": "Power switch (ClearOne and amplifier)"
         }
       }
     }
