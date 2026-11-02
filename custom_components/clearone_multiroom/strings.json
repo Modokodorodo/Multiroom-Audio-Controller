@@ -68,7 +68,8 @@
           "auto_off": "Switch off automatically when there is no sound",
           "idle_minutes": "Minutes without sound before switching off",
           "sound_threshold_db": "Sound threshold (input level)",
-          "ignored_sources": "Ignore these sources for switching off"
+          "ignored_sources": "Ignore these sources for switching off",
+          "hidden_rooms": "Hidden rooms (e.g. not wired yet)"
         }
       }
     }

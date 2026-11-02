@@ -14,8 +14,9 @@ OPT_AUTO_OFF = "auto_off"
 OPT_IDLE_MINUTES = "idle_minutes"
 OPT_THRESHOLD = "sound_threshold_db"
 OPT_IGNORED_SOURCES = "ignored_sources"
+OPT_HIDDEN_ROOMS = "hidden_rooms"
 DEFAULTS = {OPT_AUTO_ON: True, OPT_HOLD_PLAYBACK: True, OPT_AUTO_OFF: True, OPT_IDLE_MINUTES: 20,
-            OPT_THRESHOLD: -45.0, OPT_IGNORED_SOURCES: []}
+            OPT_THRESHOLD: -45.0, OPT_IGNORED_SOURCES: [], OPT_HIDDEN_ROOMS: []}
 ARYLIC_SOURCE_ID = "arylic"
 PANEL_URL = "multiroom"
 PANEL_COMPONENT = "clearone-multiroom-panel"

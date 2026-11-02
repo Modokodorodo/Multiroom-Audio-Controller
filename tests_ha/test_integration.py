@@ -421,3 +421,61 @@ async def test_auto_on_when_arylic_starts_playing(hass: HomeAssistant, socket_en
         await hass.config_entries.async_unload(entry.entry_id)
     finally:
         await fake.stop()
+
+
+async def test_settings_from_panel(hass: HomeAssistant, hass_ws_client, hass_read_only_access_token, socket_enabled) -> None:
+    """The panel's Settings dialog: same storage as Configure, hidden rooms hide entities, admin only."""
+    from homeassistant.helpers import entity_registry as er
+
+    fake = FakeClearOne()
+    entry = await _setup(hass, fake)
+    try:
+        ws = await hass_ws_client(hass)
+        await ws.send_json({"id": 1, "type": f"{DOMAIN}/settings", "values": {
+            "hidden_rooms": ["kitchen", "dining-room", "terrace"], "idle_minutes": 25, "auto_off": False,
+            "sound_threshold_db": -50, "ignored_sources": ["birds"], "caps": {"toilet": -28}}})
+        msg = await ws.receive_json()
+        assert msg["success"], msg
+        await hass.async_block_till_done()
+        o = entry.options
+        assert (o["hidden_rooms"], o["idle_minutes"], o["auto_off"], o["sound_threshold_db"], o["ignored_sources"]) == (
+            ["kitchen", "dining-room", "terrace"], 25, False, -50.0, ["birds"])
+        assert o["caps"]["toilet"] == -28
+        device = entry.runtime_data
+        assert device.sound_threshold_db == -50 and device.ignored_sources == {"birds"}
+        assert [r["id"] for r in device.state()["rooms"] if r["hidden"]] == ["kitchen", "dining-room", "terrace"]
+        registry = er.async_get(hass)
+        assert registry.async_get("number.terrace_volume").hidden_by == er.RegistryEntryHider.INTEGRATION
+        assert registry.async_get("media_player.kitchen").hidden_by == er.RegistryEntryHider.INTEGRATION
+        assert registry.async_get("number.toilet_volume").hidden_by is None
+
+        # Show them again.
+        await ws.send_json({"id": 2, "type": f"{DOMAIN}/settings", "values": {"hidden_rooms": []}})
+        assert (await ws.receive_json())["success"]
+        await hass.async_block_till_done()
+        assert registry.async_get("number.terrace_volume").hidden_by is None
+
+        # Invalid values are refused with a readable message and change nothing.
+        await ws.send_json({"id": 3, "type": f"{DOMAIN}/settings", "values": {"idle_minutes": 0}})
+        msg = await ws.receive_json()
+        assert not msg["success"] and "Minutes" in msg["error"]["message"]
+        await ws.send_json({"id": 4, "type": f"{DOMAIN}/settings", "values": {"hidden_rooms": ["garage"]}})
+        assert not (await ws.receive_json())["success"]
+        assert entry.options["idle_minutes"] == 25
+
+        # The subscribe event carries the settings and the admin flag.
+        await ws.send_json({"id": 5, "type": f"{DOMAIN}/subscribe"})
+        assert (await ws.receive_json())["success"]
+        event = (await ws.receive_json())["event"]
+        assert event["isAdmin"] is True and event["settings"]["idle_minutes"] == 25
+
+        # Non-admin users can watch and use the rooms, but not change settings or caps.
+        ro = await hass_ws_client(hass, hass_read_only_access_token)
+        await ro.send_json({"id": 1, "type": f"{DOMAIN}/settings", "values": {"auto_off": True}})
+        assert (await ro.receive_json())["error"]["code"] == "unauthorized"
+        await ro.send_json({"id": 2, "type": f"{DOMAIN}/cap", "room_id": "toilet", "max_db": -20})
+        assert (await ro.receive_json())["error"]["code"] == "unauthorized"
+        assert entry.options["auto_off"] is False
+    finally:
+        await hass.config_entries.async_unload(entry.entry_id)
+        await fake.stop()

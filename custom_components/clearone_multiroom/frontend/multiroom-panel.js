@@ -43,7 +43,8 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
 .chip{padding:7px 14px;border-radius:999px;border:1px solid var(--divider-color);background:transparent}
 .chip.on{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color,#fff)}
 .chip:disabled,.wide:disabled{opacity:.5;cursor:default}
-.sig{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success-color,#43a047);margin-right:7px;vertical-align:middle}.chip.on .sig{background:currentColor}
+.sig{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:middle;background:currentColor;opacity:.25;transition:opacity .3s,background-color .3s}
+.sig.live{opacity:1;background:var(--success-color,#43a047)}.chip.on .sig.live{background:currentColor;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .wide{width:100%;margin-top:14px;padding:10px;border-radius:10px;border:1px solid var(--divider-color);background:transparent;text-align:left}
 .wide.on{border-color:var(--primary-color);color:var(--primary-color)}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--secondary-background-color);font-size:11px;font-weight:500}
@@ -55,6 +56,39 @@ input[type=range]{width:100%;accent-color:var(--primary-color)}
 dialog{border:none;border-radius:16px;padding:22px 24px;max-width:520px;width:calc(100% - 32px);background:var(--card-background-color,#fff);color:var(--primary-text-color);box-shadow:0 20px 60px rgba(0,0,0,.35)}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog h3{margin:0 0 8px;font-size:20px;font-weight:500}
+dialog.big{max-width:680px;padding:18px 22px}
+.s-head{display:flex;justify-content:space-between;align-items:center}
+.icon-btn{border:none;background:none;font-size:18px;padding:6px 10px;border-radius:8px;color:var(--secondary-text-color)}
+.icon-btn:hover{background:var(--secondary-background-color)}
+.s-tabs{overflow-x:auto;scrollbar-width:none;margin-bottom:8px}
+.s-body{min-height:260px;max-height:62vh;overflow-y:auto;padding:4px 2px}
+.s-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid var(--divider-color)}
+.s-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.s-label{font-size:14px;font-weight:500}
+.s-help{font-size:12px;color:var(--secondary-text-color)}
+.s-room{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;padding:10px 0;border-bottom:1px solid var(--divider-color)}
+.s-room.is-hidden .s-text{opacity:.5}
+.s-inline{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--secondary-text-color)}
+.s-inline input[type=number],.stepper input{width:72px;padding:6px;border:1px solid var(--divider-color);border-radius:8px;font:inherit;background:var(--card-background-color);color:var(--primary-text-color)}
+.stepper{display:inline-flex;align-items:center;gap:6px}.stepper .btn{padding:4px 12px}
+.s-quick{margin:8px 0 4px}
+.s-threshold{padding-top:10px}.s-threshold input[type=range]{margin:6px 0 10px}
+.s-level{display:grid;grid-template-columns:90px 1fr 120px auto;gap:12px;align-items:center;padding:6px 0;font-size:13px}
+.s-level .meter{height:8px}.s-level.loud .meter>span{background:var(--success-color,#43a047)}.s-level.ignored{opacity:.55}
+.s-val{color:var(--secondary-text-color);font-size:12px}
+.s-field{display:flex;flex-direction:column;gap:4px;padding:10px 0}
+.s-field select{padding:8px;border:1px solid var(--divider-color);border-radius:8px;font:inherit;background:var(--card-background-color);color:var(--primary-text-color);margin-top:4px}
+.s-status{padding:12px 14px;border-radius:12px;background:var(--secondary-background-color);font-size:13px;margin:4px 0 10px;line-height:1.5}
+.warn-text{color:var(--warning-color)}
+.s-foot{display:flex;justify-content:flex-end;align-items:center;gap:8px;border-top:1px solid var(--divider-color);padding-top:12px;margin-top:8px}
+.s-foot .msg{flex:1;flex-basis:auto}.msg.bad{color:var(--error-color)}
+input.switch{appearance:none;-webkit-appearance:none;width:38px;height:22px;border-radius:11px;background:var(--disabled-text-color,#999);position:relative;cursor:pointer;flex:none;transition:background .2s;margin:0}
+input.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+input.switch:checked{background:var(--primary-color)}input.switch:checked::after{left:19px}
+input.switch:disabled{opacity:.45;cursor:default}
+input.switch:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+@media (max-width:600px){dialog.big{max-width:none;width:100%;height:100%;max-height:none;margin:0;border-radius:0}.s-body{max-height:none}
+  .s-room{grid-template-columns:1fr auto}.s-room label:last-child{grid-column:1/-1}.s-level{grid-template-columns:70px 1fr auto}.s-level .s-val{display:none}}
 .state{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:var(--secondary-background-color);margin:12px 0}
 .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}
 .fields label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500}
@@ -133,9 +167,17 @@ class ClearOneMultiroomPanel extends HTMLElement {
           <div id="scenes" class="grid" aria-label="Saved scenes"></div>
         </section>
         <section id="inputs-view" hidden><p class="hint">Input gain sets how loud a source is at its input, in every room. AGC is a back-end setting; you rarely need this tab.</p><div id="inputs" class="grid" aria-label="Inputs"></div></section>
-        <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p><p id="c-auto"></p></div><div class="actions conn-actions"><button class="btn" id="c-pause"></button><button class="btn" id="c-reconnect">Reconnect now</button></div></section>
+        <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p><p id="c-auto"></p></div></section>
       </main>
-      <dialog id="settings" aria-labelledby="s-title"><h3 id="s-title">Settings</h3><p class="hint"><strong>Maximum volume per room.</strong> Sliders cannot go above this. Changing a cap never changes the device or the current volume.</p><div id="caps"></div><div class="actions"><button class="btn" data-close>Close</button></div></dialog>
+      <dialog id="settings" class="big" aria-labelledby="s-title">
+        <div class="s-head"><h3 id="s-title">Settings</h3><button class="icon-btn" id="s-close" aria-label="Close settings">✕</button></div>
+        <nav class="tabs s-tabs" role="tablist" aria-label="Settings sections">
+          <button role="tab" data-tab="rooms">Rooms</button><button role="tab" data-tab="power">Auto power</button><button role="tab" data-tab="devices">Devices</button><button role="tab" data-tab="connection">Connection</button>
+        </nav>
+        <p class="hint" id="s-readonly" hidden>Only administrators can change these settings.</p>
+        <div id="s-body" class="s-body"></div>
+        <div class="s-foot" id="s-foot"><span class="msg" id="s-msg" role="status"></span><button class="btn" id="s-revert">Discard changes</button><button class="btn primary" id="s-save">Save</button></div>
+      </dialog>
       <dialog id="agc" aria-labelledby="a-title"><h3 id="a-title"></h3>
         <p class="hint">Automatic gain control raises quiet signals on its own, up to the maximum gain. It applies to this source in every room.</p>
         <div class="state"><span id="a-status"></span><button class="btn primary" id="a-switch" role="switch"></button></div>
@@ -162,13 +204,18 @@ class ClearOneMultiroomPanel extends HTMLElement {
     };
     r.getElementById('pill').onclick = e => { e.preventDefault(); r.getElementById('conn').scrollIntoView({behavior: 'smooth'}); };
     r.getElementById('open-settings').onclick = () => this._openSettings();
+    r.getElementById('s-close').onclick = () => this._closeSettings();
+    r.getElementById('settings').addEventListener('cancel', e => { e.preventDefault(); this._closeSettings(); });
+    r.querySelectorAll('.s-tabs button').forEach(b => { b.onclick = () => this._settingsTab(b.dataset.tab); });
+    r.getElementById('s-save').onclick = () => this._saveSettings();
+    r.getElementById('s-revert').onclick = () => { this._draft = structuredClone(this._base); this._renderSettings(); };
     r.querySelectorAll('[data-close]').forEach(b => { b.onclick = () => b.closest('dialog').close(); });
     r.querySelectorAll('dialog').forEach(d => {
       // Close when pressed and released on the backdrop, outside the card.
       const outside = e => { const b = d.getBoundingClientRect(); return e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom; };
       let down = false;
       d.addEventListener('mousedown', e => { down = e.target === d && outside(e); });
-      d.addEventListener('click', e => { if (e.target === d && down && outside(e)) d.close(); down = false; });
+      d.addEventListener('click', e => { if (e.target === d && down && outside(e)) (d.id === 'settings' ? this._closeSettings() : d.close()); down = false; });
     });
     r.getElementById('a-switch').onclick = () => {
       const inp = this._input(this._agcId); if (!inp) return;
@@ -269,13 +316,6 @@ class ClearOneMultiroomPanel extends HTMLElement {
     if (s) {
       const last = s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString() : 'never';
       r.getElementById('c-status').textContent = `ClearOne ${s.device.host} · ${ready ? 'connected' : s.status}`;
-      const pause = r.getElementById('c-pause'), again = r.getElementById('c-reconnect');
-      pause.textContent = paused ? 'Resume communication' : 'Pause communication';
-      pause.title = paused ? '' : 'Stop talking to the ClearOne, e.g. while you use Converge Console';
-      pause.disabled = again.disabled = !!this._pending;
-      again.hidden = paused;
-      pause.onclick = () => this._call('connection', {action: paused ? 'resume' : 'pause'}, 'connection');
-      again.onclick = () => this._call('connection', {action: 'reconnect'}, 'connection');
       r.getElementById('c-detail').textContent = ready
         ? `Firmware ${s.device.firmware ?? '?'}. Last full read ${last}. Values are read back from the device.`
         : paused ? `Paused: no connection and no polling until you resume. Showing last known values from ${last}.`
@@ -287,16 +327,17 @@ class ClearOneMultiroomPanel extends HTMLElement {
     this._renderInputs(s, ready);
     this._renderScenes(s, ready);
     if (r.getElementById('agc').open) this._fillAgc(false);
+    if (r.getElementById('settings').open) this._settingsLive();
   }
 
   _renderRooms(s, ready) {
     const box = this.shadowRoot.getElementById('rooms');
-    box.replaceChildren(...s.rooms.map(room => {
+    box.replaceChildren(...s.rooms.filter(room => !room.hidden).map(room => {
       const busy = this._pending === `room:${room.id}`, off = !ready || busy, known = room.gainDb !== null;
       const card = document.createElement('article'); card.className = 'card';
       const badge = !ready ? 'Unknown' : room.playing.length ? 'Playing' : room.muted ? 'Muted' : 'Quiet';
       card.innerHTML = `<div class="card-head"><span>Output ${room.output}</span><span class="badge ${room.playing.length ? 'on' : ''}">${badge}</span></div>
-        <h2>${esc(room.name)}</h2><p class="sub">${room.playing.length ? 'Now: ' + esc(room.playing.join(' + ')) : 'Sources can play together'}</p>
+        <h2>${esc(room.name)}</h2><p class="sub">${room.playing.length ? 'Now: ' + esc(room.playing.join(' + ')) : ''}</p>
         <div class="label">Sources</div><div class="chips"></div>
         <div class="label"><span>Volume</span><output>${known ? room.gainDb + ' dB' : '—'}</output></div>
         <input type="range" min="${room.minDb}" max="${room.maxDb}" step="0.5" value="${known ? room.gainDb : room.minDb}" aria-label="${esc(room.name)} volume in dB">
@@ -308,7 +349,8 @@ class ClearOneMultiroomPanel extends HTMLElement {
         b.className = `chip ${m.on ? 'on' : ''}`; b.disabled = off;
         b.setAttribute('aria-pressed', String(m.on));
         b.setAttribute('aria-label', `${room.name}: ${m.name} ${m.on ? 'on' : 'off'}${m.present ? ', signal present' : ''}`);
-        b.innerHTML = `${m.present ? '<span class="sig"></span>' : ''}${esc(m.name)}`;
+        // The dot is always there (fixed width), so buttons never shift; only its colour changes.
+        b.innerHTML = `<span class="sig${m.present ? ' live' : ''}" aria-hidden="true"></span>${esc(m.name)}`;
         b.onclick = () => this._call('room', {room_id: room.id, source_id: m.id, on: !m.on}, `room:${room.id}`);
         chips.append(b);
       }
@@ -334,8 +376,10 @@ class ClearOneMultiroomPanel extends HTMLElement {
       return b;
     }));
     const checks = r.getElementById('scene-rooms');
-    if (!checks.children.length) {
-      checks.replaceChildren(...s.rooms.map(room => {
+    const visible = s.rooms.filter(room => !room.hidden), key = visible.map(room => room.id).join();
+    if (checks.dataset.rooms !== key) {
+      checks.dataset.rooms = key;
+      checks.replaceChildren(...visible.map(room => {
         const l = document.createElement('label');
         l.innerHTML = `<input type="checkbox" value="${esc(room.id)}" checked> ${esc(room.name)}`;
         return l;
@@ -409,21 +453,204 @@ class ClearOneMultiroomPanel extends HTMLElement {
     r.getElementById('a-saved').textContent = '';
   }
 
-  _openSettings() {
-    const r = this.shadowRoot, s = this._state; if (!s) return;
-    const box = r.getElementById('caps');
-    box.replaceChildren(...s.rooms.map(room => {
-      const row = document.createElement('div'); row.className = 'caprow';
-      row.innerHTML = `<label>${esc(room.name)}</label><input type="number" step="0.5" min="${room.minDb + 5}" max="0" value="${room.maxDb}" aria-label="${esc(room.name)} volume cap in dB"><span>dB</span><button class="btn">Save</button><span class="msg" role="status"></span>`;
-      const input = row.querySelector('input'), msg = row.querySelector('.msg');
-      row.querySelector('button').onclick = async () => {
-        msg.textContent = '';
-        try { await this._hass.callWS({type: `${DOMAIN}/cap`, room_id: room.id, max_db: Number(input.value)}); msg.textContent = 'Saved'; }
-        catch (err) { msg.textContent = err.message || String(err); }
+  // ---- Settings dialog -------------------------------------------------------------------------
+  // Each tab edits a draft; Save sends only that tab's values (same storage as the integration's Configure).
+  static TAB_KEYS = {rooms: ['hidden_rooms', 'caps'],
+    power: ['auto_on', 'hold_playback', 'auto_off', 'idle_minutes', 'sound_threshold_db', 'ignored_sources'],
+    devices: ['arylic_entity', 'power_entity'], connection: []};
+
+  _snapshot() {
+    const s = this._state, v = structuredClone(s.settings || {});
+    v.caps = Object.fromEntries(s.rooms.map(room => [room.id, room.maxDb]));
+    return v;
+  }
+
+  _dirty() {
+    const keys = ClearOneMultiroomPanel.TAB_KEYS[this._sTab] || [];
+    return keys.some(k => JSON.stringify(this._draft?.[k] ?? null) !== JSON.stringify(this._base?.[k] ?? null));
+  }
+
+  _openSettings(tab) {
+    if (!this._state) return;
+    this._base = this._snapshot(); this._draft = structuredClone(this._base);
+    this._sTab = tab || this._sTab || 'rooms';
+    this._renderSettings();
+    this.shadowRoot.getElementById('settings').showModal();
+  }
+
+  _closeSettings() {
+    if (this._dirty() && !confirm('Discard your unsaved changes?')) return;
+    this.shadowRoot.getElementById('settings').close();
+  }
+
+  _settingsTab(tab) {
+    if (tab === this._sTab) return;
+    if (this._dirty()) {
+      if (!confirm('Discard your unsaved changes on this tab?')) return;
+      this._draft = structuredClone(this._base);
+    }
+    this._sTab = tab; this._renderSettings();
+  }
+
+  async _saveSettings() {
+    const keys = ClearOneMultiroomPanel.TAB_KEYS[this._sTab], values = {}, msg = this.shadowRoot.getElementById('s-msg');
+    for (const k of keys) values[k] = this._draft[k];
+    if (values.caps) values.caps = Object.fromEntries(Object.entries(values.caps).filter(([id, v]) => v !== this._base.caps[id]));
+    msg.className = 'msg'; msg.textContent = 'Saving…';
+    try {
+      await this._hass.callWS({type: `${DOMAIN}/settings`, values});
+      for (const k of keys) this._base[k] = structuredClone(this._draft[k]);
+      msg.textContent = this._sTab === 'devices' ? 'Saved. The integration reconnects (about a second).' : 'Saved.';
+    } catch (err) { msg.className = 'msg bad'; msg.textContent = err.message || String(err); }
+    this._settingsFooter();
+  }
+
+  _settingsFooter() {
+    const r = this.shadowRoot, admin = this._state?.isAdmin, dirty = this._dirty();
+    r.getElementById('s-foot').hidden = this._sTab === 'connection' || !admin;
+    r.getElementById('s-save').disabled = r.getElementById('s-revert').disabled = !dirty;
+    if (dirty && r.getElementById('s-msg').textContent.startsWith('Saved')) r.getElementById('s-msg').textContent = '';
+  }
+
+  // Small builders for consistent rows.
+  _switchRow(label, help, checked, onChange, disabled) {
+    const row = document.createElement('label'); row.className = 's-row';
+    row.innerHTML = `<span class="s-text"><span class="s-label">${esc(label)}</span>${help ? `<span class="s-help">${esc(help)}</span>` : ''}</span><input type="checkbox" class="switch">`;
+    const box = row.querySelector('input'); box.checked = !!checked; box.disabled = !!disabled;
+    box.onchange = () => { onChange(box.checked); this._settingsFooter(); };
+    return row;
+  }
+
+  _renderSettings() {
+    const r = this.shadowRoot, s = this._state, d = this._draft, admin = !!s.isAdmin, body = r.getElementById('s-body');
+    r.querySelectorAll('.s-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === this._sTab)));
+    r.getElementById('s-readonly').hidden = admin || this._sTab === 'connection';
+    r.getElementById('s-msg').textContent = '';
+    body.replaceChildren();
+    const ro = !admin;
+    if (this._sTab === 'rooms') {
+      body.insertAdjacentHTML('beforeend', '<p class="hint">Hide rooms you do not use (yet). Hidden rooms disappear from the panel and their entities are hidden in Home Assistant, but keep working. The cap is the highest volume the slider allows; changing it never changes the current volume.</p>');
+      for (const room of s.rooms) {
+        const row = document.createElement('div'); row.className = 's-room' + (d.hidden_rooms.includes(room.id) ? ' is-hidden' : '');
+        row.innerHTML = `<span class="s-text"><span class="s-label">${esc(room.name)}</span><span class="s-help">Output ${room.output}${room.deviceLabel ? ' · ' + esc(room.deviceLabel) : ''}</span></span>
+          <label class="s-inline">Show <input type="checkbox" class="switch"></label>
+          <label class="s-inline">Cap <input type="number" step="0.5" min="${room.minDb + 5}" max="0"> dB</label>`;
+        const show = row.querySelector('.switch'), cap = row.querySelector('input[type=number]');
+        show.checked = !d.hidden_rooms.includes(room.id); show.disabled = ro;
+        show.onchange = () => {
+          d.hidden_rooms = show.checked ? d.hidden_rooms.filter(id => id !== room.id) : [...d.hidden_rooms, room.id];
+          row.classList.toggle('is-hidden', !show.checked); this._settingsFooter();
+        };
+        cap.value = d.caps[room.id]; cap.disabled = ro;
+        cap.oninput = () => { d.caps[room.id] = cap.value === '' ? this._base.caps[room.id] : Number(cap.value); this._settingsFooter(); };
+        cap.setAttribute('aria-label', `${room.name} volume cap in dB`);
+        body.append(row);
+      }
+    } else if (this._sTab === 'power') {
+      const noPower = !s.settings.power_entity;
+      body.insertAdjacentHTML('beforeend', `<div class="s-status" id="s-auto"></div>${noPower ? '<p class="hint warn-text">Choose the power switch on the Devices tab first; automatic power needs it.</p>' : ''}`);
+      const dis = ro || noPower;
+      body.append(
+        this._switchRow('Switch on when music starts', 'When the Arylic starts playing or a room speaker is used.', d.auto_on, v => { d.auto_on = v; }, dis),
+        this._switchRow('Hold playback until ready', 'Pause the Arylic while the ClearOne starts, so the start of the music is not lost.', d.hold_playback, v => { d.hold_playback = v; }, dis),
+        this._switchRow('Switch off when quiet', 'After the minutes below without sound.', d.auto_off, v => { d.auto_off = v; }, dis));
+      const mins = document.createElement('div'); mins.className = 's-row';
+      mins.innerHTML = `<span class="s-text"><span class="s-label">Minutes without sound</span><span class="s-help">Before switching off.</span></span>
+        <span class="stepper"><button class="btn" data-d="-5" aria-label="5 minutes less">−</button><input type="number" min="1" max="480" step="1" aria-label="Minutes without sound"><button class="btn" data-d="5" aria-label="5 minutes more">+</button></span>`;
+      const mi = mins.querySelector('input'); mi.value = d.idle_minutes; mi.disabled = dis;
+      const setMin = v => { d.idle_minutes = Math.max(1, Math.min(480, Math.round(v) || 1)); mi.value = d.idle_minutes; this._settingsFooter(); };
+      mi.oninput = () => { if (mi.value !== '') { d.idle_minutes = Number(mi.value); this._settingsFooter(); } };
+      mi.onchange = () => setMin(Number(mi.value));
+      mins.querySelectorAll('button').forEach(b => { b.disabled = dis; b.onclick = () => setMin(d.idle_minutes + Number(b.dataset.d)); });
+      const quick = document.createElement('div'); quick.className = 'chips s-quick';
+      for (const q of [10, 20, 30, 60]) {
+        const b = document.createElement('button'); b.className = 'chip'; b.textContent = `${q} min`; b.disabled = dis;
+        b.onclick = () => setMin(q); quick.append(b);
+      }
+      const th = document.createElement('div'); th.className = 's-threshold';
+      th.innerHTML = `<div class="s-row"><span class="s-text"><span class="s-label">Sound threshold <output id="s-th"></output></span>
+        <span class="s-help">Louder than this counts as sound. Set it above the noise and below your music: watch the live bars.</span></span></div>
+        <input type="range" min="-90" max="-10" step="1" aria-label="Sound threshold in dB"><div id="s-levels"></div>`;
+      const slider = th.querySelector('input'); slider.value = d.sound_threshold_db; slider.disabled = dis;
+      slider.oninput = () => { d.sound_threshold_db = Number(slider.value); this._settingsLive(); this._settingsFooter(); };
+      body.append(mins, quick, th);
+      const levels = th.querySelector('#s-levels');
+      for (const inp of s.inputs) {
+        const row = document.createElement('div'); row.className = 's-level'; row.dataset.src = inp.id;
+        row.innerHTML = `<span class="s-label">${esc(inp.name)}</span><span class="meter"><span></span><i></i></span><span class="s-val"></span>
+          <label class="s-inline">Ignore <input type="checkbox" class="switch"></label>`;
+        const ig = row.querySelector('.switch'); ig.checked = d.ignored_sources.includes(inp.id); ig.disabled = dis;
+        ig.setAttribute('aria-label', `Ignore ${inp.name} for switching off`);
+        ig.onchange = () => {
+          d.ignored_sources = ig.checked ? [...d.ignored_sources, inp.id] : d.ignored_sources.filter(id => id !== inp.id);
+          this._settingsLive(); this._settingsFooter();
+        };
+        levels.append(row);
+      }
+    } else if (this._sTab === 'devices') {
+      const states = Object.values(this._hass.states);
+      const name = st => st.attributes.friendly_name || st.entity_id;
+      const select = (label, help, key, filter) => {
+        const row = document.createElement('label'); row.className = 's-field';
+        row.innerHTML = `<span class="s-label">${esc(label)}</span><span class="s-help">${esc(help)}</span><select></select>`;
+        const sel = row.querySelector('select'); sel.disabled = ro;
+        sel.add(new Option('— none —', ''));
+        states.filter(filter).sort((a, b) => name(a).localeCompare(name(b))).forEach(st => sel.add(new Option(`${name(st)} (${st.entity_id})`, st.entity_id)));
+        if (d[key] && ![...sel.options].some(o => o.value === d[key])) sel.add(new Option(`${d[key]} (not found)`, d[key]));
+        sel.value = d[key] || '';
+        sel.onchange = () => { d[key] = sel.value || null; this._settingsFooter(); };
+        return row;
       };
-      return row;
-    }));
-    r.getElementById('settings').showModal();
+      body.append(
+        select('Arylic media player', 'The LinkPlay entity of the Arylic (not Music Assistant\'s copy). Room speakers stream through it.', 'arylic_entity',
+          st => st.entity_id.startsWith('media_player.') && !('stream_via' in st.attributes) && !('mass_player_type' in st.attributes)),
+        select('Power switch', 'The relay that switches the ClearOne and the amplifier. Needed for the ⏻ button and automatic power.', 'power_entity',
+          st => /^(switch|input_boolean|light)\./.test(st.entity_id)));
+      body.insertAdjacentHTML('beforeend', '<p class="hint">Saving a change here reconnects the integration briefly (about a second).</p>');
+    } else {
+      body.insertAdjacentHTML('beforeend', `<div class="s-status" id="s-conn"></div>
+        <div class="actions wrap"><button class="btn" id="s-pause"></button><button class="btn" id="s-reconnect">Reconnect now</button></div>
+        <p class="hint">Pause stops all communication with the ClearOne until you resume, for example while you use Converge Console. Reconnect drops the connection and connects again right away.</p>
+        <p class="hint">Changing the ClearOne's address or login: Settings → Devices &amp; services → ClearOne Multiroom → ⋮ → <strong>Reconfigure</strong> (the login is checked there).</p>
+        <div class="actions"><button class="btn" id="s-open-integration">Open the integration page</button></div>`);
+      body.querySelector('#s-reconnect').onclick = () => this._call('connection', {action: 'reconnect'}, 'connection');
+      body.querySelector('#s-open-integration').onclick = () => {
+        this.shadowRoot.getElementById('settings').close();
+        history.pushState(null, '', '/config/integrations/integration/clearone_multiroom');
+        window.dispatchEvent(new CustomEvent('location-changed'));
+      };
+    }
+    this._settingsLive();
+    this._settingsFooter();
+  }
+
+  // Parts of the open dialog that follow the device every few seconds (never the fields being edited).
+  _settingsLive() {
+    const r = this.shadowRoot, s = this._state, d = this._draft; if (!s || !d) return;
+    const auto = r.getElementById('s-auto');
+    if (auto) auto.textContent = this._autoOffText(s.activity) || '—';
+    const out = r.getElementById('s-th');
+    if (out) out.textContent = `${d.sound_threshold_db} dB`;
+    const pct = v => Math.max(0, Math.min(100, (v + 90) / 80 * 100));  // -90..-10 dB, like the slider
+    r.querySelectorAll('.s-level').forEach(row => {
+      const inp = s.inputs.find(i => i.id === row.dataset.src); if (!inp) return;
+      const loud = inp.levelDb != null && inp.levelDb > d.sound_threshold_db, ignored = d.ignored_sources.includes(inp.id);
+      row.querySelector('.meter>span').style.width = `${inp.levelDb == null ? 0 : pct(inp.levelDb)}%`;
+      row.querySelector('.meter>i').style.left = `${pct(d.sound_threshold_db)}%`;
+      row.querySelector('.s-val').textContent = inp.levelDb == null ? '—' : `${Math.round(inp.levelDb)} dB${ignored ? '' : loud ? ' · sound' : ' · quiet'}`;
+      row.classList.toggle('loud', loud && !ignored); row.classList.toggle('ignored', ignored);
+    });
+    const conn = r.getElementById('s-conn');
+    if (conn) {
+      const paused = s.paused === true, last = s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString() : 'never';
+      conn.innerHTML = `<strong>ClearOne ${esc(s.device.host)}</strong> · ${s.status === 'ready' ? 'connected' : esc(s.status)}<br>
+        <span class="s-help">Firmware ${esc(s.device.firmware ?? '?')} · last full read ${esc(last)}${s.error ? ' · ' + esc(s.error) : ''}</span>`;
+      const pause = r.getElementById('s-pause');
+      pause.textContent = paused ? 'Resume communication' : 'Pause communication';
+      pause.onclick = () => this._call('connection', {action: paused ? 'resume' : 'pause'}, 'connection');
+      r.getElementById('s-reconnect').hidden = paused;
+      pause.disabled = r.getElementById('s-reconnect').disabled = !!this._pending;
+    }
   }
 }
 

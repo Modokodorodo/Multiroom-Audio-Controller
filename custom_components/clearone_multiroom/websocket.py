@@ -9,8 +9,26 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
 from .clearone import ClearOneError
-from .const import DOMAIN
+from .const import (
+    DEFAULTS, DOMAIN, OPT_ARYLIC_ENTITY, OPT_AUTO_OFF, OPT_AUTO_ON, OPT_HIDDEN_ROOMS, OPT_HOLD_PLAYBACK,
+    OPT_IDLE_MINUTES, OPT_IGNORED_SOURCES, OPT_POWER_ENTITY, OPT_THRESHOLD, ROOMS, SOURCES,
+)
 from .device import MultiroomDevice
+
+
+def _entry(hass: HomeAssistant):
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if isinstance(getattr(entry, "runtime_data", None), MultiroomDevice):
+            return entry
+    return None
+
+
+def _settings(hass: HomeAssistant) -> dict[str, Any]:
+    """The integration options as the panel's Settings dialog edits them (same storage as Configure)."""
+    entry = _entry(hass)
+    opts = entry.options if entry else {}
+    return {**{k: opts.get(k, v) for k, v in DEFAULTS.items()},
+            OPT_ARYLIC_ENTITY: opts.get(OPT_ARYLIC_ENTITY), OPT_POWER_ENTITY: opts.get(OPT_POWER_ENTITY)}
 
 
 def _device(hass: HomeAssistant) -> MultiroomDevice | None:
@@ -25,7 +43,7 @@ def _device(hass: HomeAssistant) -> MultiroomDevice | None:
 def async_register_commands(hass: HomeAssistant) -> None:
     if hass.data.get(f"{DOMAIN}_ws"):
         return
-    for handler in (ws_connection, ws_power, ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
+    for handler in (ws_settings, ws_connection, ws_power, ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
         websocket_api.async_register_command(hass, handler)
     hass.data[f"{DOMAIN}_ws"] = True
 
@@ -61,7 +79,9 @@ def ws_subscribe(hass: HomeAssistant, connection: websocket_api.ActiveConnection
     def forward() -> None:
         current = _device(hass)  # looked up each time, so the panel keeps working after a reload
         if current is not None:
-            connection.send_message(websocket_api.event_message(msg["id"], {**current.state(), "power": _power(hass, current)}))
+            connection.send_message(websocket_api.event_message(msg["id"], {
+                **current.state(), "power": _power(hass, current), "settings": _settings(hass),
+                "isAdmin": bool(connection.user and connection.user.is_admin)}))
 
     subscribers = hass.data.setdefault(SUBSCRIBERS, set())
     subscribers.add(forward)
@@ -149,6 +169,7 @@ async def ws_input(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
     await _run(connection, msg, coro)
 
 
+@websocket_api.require_admin
 @websocket_api.websocket_command({
     vol.Required("type"): f"{DOMAIN}/cap",
     vol.Required("room_id"): str,
@@ -221,3 +242,47 @@ async def ws_scene_apply(hass: HomeAssistant, connection: websocket_api.ActiveCo
 def ws_connection(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Pause or resume communication with the ClearOne, or reconnect now."""
     _sync_call(hass, connection, msg, lambda d: getattr(d, msg["action"])())
+
+
+SETTINGS_SCHEMA = vol.Schema({
+    vol.Optional(OPT_AUTO_ON): bool,
+    vol.Optional(OPT_HOLD_PLAYBACK): bool,
+    vol.Optional(OPT_AUTO_OFF): bool,
+    vol.Optional(OPT_IDLE_MINUTES): vol.All(vol.Coerce(int), vol.Range(min=1, max=480, msg="Minutes must be 1 to 480")),
+    vol.Optional(OPT_THRESHOLD): vol.All(vol.Coerce(float), vol.Range(min=-90, max=-10, msg="Threshold must be -90 to -10 dB")),
+    vol.Optional(OPT_IGNORED_SOURCES): [vol.In([s["id"] for s in SOURCES])],
+    vol.Optional(OPT_HIDDEN_ROOMS): [vol.In([r["id"] for r in ROOMS])],
+    vol.Optional(OPT_ARYLIC_ENTITY): vol.Any(None, "", vol.Match(r"^media_player\.[a-z0-9_]+$")),
+    vol.Optional(OPT_POWER_ENTITY): vol.Any(None, "", vol.Match(r"^(switch|input_boolean|light)\.[a-z0-9_]+$")),
+    vol.Optional("caps"): {vol.In([r["id"] for r in ROOMS]): vol.Coerce(float)},
+})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings", vol.Required("values"): dict})
+@callback
+def ws_settings(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Save settings from the panel. Same storage and effect as the integration's Configure dialog."""
+    entry, device = _entry(hass), _device(hass)
+    if entry is None or device is None:
+        connection.send_error(msg["id"], "not_loaded", "ClearOne Multiroom is not loaded")
+        return
+    try:
+        values = SETTINGS_SCHEMA(msg["values"])
+    except vol.Invalid as err:
+        connection.send_error(msg["id"], "invalid", str(err.msg if hasattr(err, "msg") else err))
+        return
+    try:
+        for room_id, cap in values.pop("caps", {}).items():
+            device.set_cap(room_id, cap)  # stores the caps in the options itself
+    except ClearOneError as err:
+        connection.send_error(msg["id"], "failed", str(err))
+        return
+    options = {**entry.options}
+    for key, value in values.items():
+        if key in (OPT_ARYLIC_ENTITY, OPT_POWER_ENTITY) and not value:
+            options.pop(key, None)
+        else:
+            options[key] = value
+    hass.config_entries.async_update_entry(entry, options=options)
+    connection.send_result(msg["id"])

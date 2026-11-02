@@ -57,6 +57,7 @@ class MultiroomDevice:
         self.levels: dict[str, float] = {}          # source id -> loudest of its inputs
         self.sound_threshold_db = DEFAULT_THRESHOLD_DB
         self.ignored_sources: set[str] = set()
+        self.hidden_rooms: set[str] = set()  # not shown in the panel (e.g. not wired yet); still polled
         self.last_sound_at: datetime | None = None  # last time a monitored source had sound
         self._op = asyncio.Lock()  # a refresh and a change never interleave
         self._wake = asyncio.Event()
@@ -298,6 +299,7 @@ class MultiroomDevice:
                 "present": self.present(s["id"])} for s in self.sources]
         muted = st["muted"] if st else None
         return {"id": room_id, "name": room["name"], "output": room["output"], "minDb": room["minDb"],
+                "hidden": room_id in self.hidden_rooms,
                 "maxDb": room["maxDb"], "deviceLabel": st and st["label"], "gainDb": st and st["gainDb"],
                 "muted": muted, "mix": mix,
                 "playing": [] if muted or not st else [m["name"] for m in mix if m["on"] and m["present"]]}

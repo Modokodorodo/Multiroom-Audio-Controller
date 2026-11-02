@@ -17,7 +17,7 @@ from homeassistant.helpers.selector import (
 from .clearone import ClearOneAuthError, ClearOneError, ClearOneTelnet
 from .const import (
     CONF_DEVICE_ID, DEFAULTS, DOMAIN, OPT_ARYLIC_ENTITY, OPT_AUTO_OFF, OPT_AUTO_ON, OPT_HOLD_PLAYBACK,
-    OPT_IDLE_MINUTES, OPT_IGNORED_SOURCES, OPT_POWER_ENTITY, OPT_THRESHOLD, SOURCES,
+    OPT_HIDDEN_ROOMS, OPT_IDLE_MINUTES, OPT_IGNORED_SOURCES, OPT_POWER_ENTITY, OPT_THRESHOLD, ROOMS, SOURCES,
 )
 
 
@@ -122,6 +122,9 @@ class MultiroomOptionsFlow(OptionsFlow):
                 min=-90, max=-10, step=1, unit_of_measurement="dB", mode=NumberSelectorMode.BOX)),
             vol.Required(OPT_IGNORED_SOURCES, default=opt(OPT_IGNORED_SOURCES)): SelectSelector(SelectSelectorConfig(
                 options=[{"value": s["id"], "label": s["name"]} for s in SOURCES], multiple=True,
+                mode=SelectSelectorMode.LIST)),
+            vol.Required(OPT_HIDDEN_ROOMS, default=opt(OPT_HIDDEN_ROOMS)): SelectSelector(SelectSelectorConfig(
+                options=[{"value": r["id"], "label": r["name"]} for r in ROOMS], multiple=True,
                 mode=SelectSelectorMode.LIST)),
         })
         return self.async_show_form(step_id="init", data_schema=schema)

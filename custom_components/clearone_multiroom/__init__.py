@@ -14,8 +14,9 @@ import time
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
-from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, OPT_POWER_ENTITY, OPT_SCENES, PANEL_COMPONENT, PANEL_URL, STATIC_URL
+from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, OPT_HIDDEN_ROOMS, OPT_POWER_ENTITY, OPT_SCENES, PANEL_COMPONENT, PANEL_URL, STATIC_URL
 from .device import MultiroomDevice
 from .power import AutoPower
 from .websocket import async_notify_subscribers, async_register_commands
@@ -69,6 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
     auto = device.auto_power = AutoPower(hass, entry, device, power, arylic)
     for unsub in auto.start():
         entry.async_on_unload(unsub)
+    _apply_hidden_rooms(hass, entry, device)
 
     async def options_updated(hass: HomeAssistant, entry: MultiroomConfigEntry) -> None:
         # Caps and scenes are applied live; a different Arylic player or power switch needs a reload.
@@ -76,6 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
             await hass.config_entries.async_reload(entry.entry_id)
         else:
             auto.apply_settings()  # threshold, ignored inputs, minutes, on/off switches: applied live
+            _apply_hidden_rooms(hass, entry, device)
 
     entry.async_on_unload(entry.add_update_listener(options_updated))
     return True
@@ -134,3 +137,20 @@ def _keep_arylic_at_full_volume(hass: HomeAssistant, arylic: str):
             "media_player", "volume_set", {"entity_id": arylic, "volume_level": 1.0}, blocking=False))
 
     return async_track_state_change_event(hass, [arylic], changed)
+
+
+@callback
+def _apply_hidden_rooms(hass: HomeAssistant, entry: MultiroomConfigEntry, device: MultiroomDevice) -> None:
+    """Hidden rooms disappear from the panel, and their entities are hidden (not disabled: they keep working)."""
+    hidden = set(entry.options.get(OPT_HIDDEN_ROOMS, []))
+    device.hidden_rooms = hidden
+    registry = er.async_get(hass)
+    for ent in er.async_entries_for_config_entry(registry, entry.entry_id):
+        room_id = next((r["id"] for r in device.rooms if ent.unique_id.startswith(f"{entry.entry_id}_{r['id']}_")), None)
+        if room_id is None:
+            continue
+        if room_id in hidden and ent.hidden_by is None:
+            registry.async_update_entity(ent.entity_id, hidden_by=er.RegistryEntryHider.INTEGRATION)
+        elif room_id not in hidden and ent.hidden_by == er.RegistryEntryHider.INTEGRATION:
+            registry.async_update_entity(ent.entity_id, hidden_by=None)
+    device._notify()
