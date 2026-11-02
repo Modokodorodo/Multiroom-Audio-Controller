@@ -48,7 +48,7 @@ test('live controller reads state, validates changes and detects unconfirmed wri
   c.connect = async function () { this.device = new R({host: '127.0.0.1', port, timeoutMs: 800}); await this.device.connect('u', 'p'); await this.refresh(); };
   await c.connect();
   const s = c.state();
-  assert.equal(s.status, 'ready'); assert.equal(s.rooms.length, 3); assert.deepEqual(s.rooms.map(r => r.name), ['Toilet', 'Kitchen extension', 'Laundry room']);
+  assert.equal(s.status, 'ready'); assert.equal(s.rooms.length, 6); assert.deepEqual(s.rooms.map(r => r.name), ['Toilet', 'Kitchen extension', 'Laundry room', 'Kitchen', 'Dining room', 'Terrace']);
   assert.equal(s.rooms[0].gainDb, -35); assert.equal(s.rooms[0].muted, false);
   await assert.rejects(c.update('toilet', {gainDb: -10}, s.revision), /room limits/);
   await assert.rejects(c.update('toilet', {sourceId: 'x'}, s.revision), /Unknown setting/);
@@ -80,7 +80,7 @@ test('write whitelist: only the documented settings for rooms 1-3 and inputs 1-4
   const rx = [], srv = await listen(rx);
   const t = new ClearOneTelnet({host: '127.0.0.1', port: srv.address().port, timeoutMs: 500});
   await t.connect('u', 'p');
-  for (const bad of ['#D0 GAIN 1 O -30.0', '#D0 GAIN 1 O -30.0 R', '#D0 GAIN 4 O -30.0 A', '#D0 MUTE 1 O 2', '#D0 MUTE 13 O 1', '#D0 MTRX 1 M 1 O 0', '#D0 GAIN 1 O -30.0 A\r#D0 MUTE 2 O 1', '#D* MUTE 1 O 1', '#D0 GAIN 1 O 999.0 A', '#D0 MTRX 4 M 1 O 1', '#D0 MTRX 3 M 1 O 4', '#D0 MTRX 1 M 1 O 3', '#D0 MTRX B P 1 O 1', '#D0 MTRX A P 4 O 1', '#D0 MTRX A P 1 O 2', '#D0 MTRXLVL 3 M 1 O -10.0 A', '#D0 GAIN 5 M -10.0 A', '#D0 GAIN 1 L -10.0 A', '#D0 GAIN 1 M -10.0 R', '#D0 GAIN 1 M -10.0', '#D0 AGC 1 M 2', '#D0 AGC 5 M 1', '#D0 AGC 1 L 1', '#D0 AGC 1 M', '#D0 AGCSET 1 M -25 0 2 18', '#D0 AGCSET 1 M', '#D0 AGCSET 5 M -25 0 2.00 18.00', '#D0 AGCSET 1 L -25 0 2.00 18.00', '#D0 AGCSET 1 M -25 0 2.00'])
+  for (const bad of ['#D0 GAIN 1 O -30.0', '#D0 GAIN 1 O -30.0 R', '#D0 GAIN 7 O -30.0 A', '#D0 MUTE 1 O 2', '#D0 MUTE 13 O 1', '#D0 MTRX 1 M 1 O 0', '#D0 GAIN 1 O -30.0 A\r#D0 MUTE 2 O 1', '#D* MUTE 1 O 1', '#D0 GAIN 1 O 999.0 A', '#D0 MTRX 4 M 1 O 1', '#D0 MTRX 3 M 1 O 4', '#D0 MTRX 1 M 1 O 3', '#D0 MTRX B P 1 O 1', '#D0 MTRX A P 7 O 1', '#D0 MTRX A P 1 O 2', '#D0 MTRXLVL 3 M 1 O -10.0 A', '#D0 GAIN 5 M -10.0 A', '#D0 GAIN 1 L -10.0 A', '#D0 GAIN 1 M -10.0 R', '#D0 GAIN 1 M -10.0', '#D0 AGC 1 M 2', '#D0 AGC 5 M 1', '#D0 AGC 1 L 1', '#D0 AGC 1 M', '#D0 AGCSET 1 M -25 0 2 18', '#D0 AGCSET 1 M', '#D0 AGCSET 5 M -25 0 2.00 18.00', '#D0 AGCSET 1 L -25 0 2.00 18.00', '#D0 AGCSET 1 M -25 0 2.00'])
     await assert.rejects(t.write(bad), /Refused write/);
   await t.write('#D0 MUTE 2 O 1'); await t.write('#D0 MTRX A P 2 O 1'); await t.write('#D0 MTRX 4 M 3 O 3'); await t.write('#D0 MTRX 3 M 1 O 0'); await t.write('#D0 GAIN 1 M -12.5 A'); await t.write('#D0 AGC 2 M 0'); await t.write('#D0 AGCSET 3 M -25 0 2.00 6.00');
   assert.deepEqual(rx.slice(2), ['#D0 MUTE 2 O 1', '#D0 MTRX A P 2 O 1', '#D0 MTRX 4 M 3 O 3', '#D0 MTRX 3 M 1 O 0', '#D0 GAIN 1 M -12.5 A', '#D0 AGC 2 M 0', '#D0 AGCSET 3 M -25 0 2.00 6.00']);

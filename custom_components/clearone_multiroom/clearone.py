@@ -15,8 +15,8 @@ QUERY = re.compile(
     rf"|MTRX {_CH} [ML] {_CH} O|MTRX [A-H] P {_CH} O|LABEL {_CH} [OML] 0)"
 )
 WRITE = re.compile(
-    r"#D[0-9AB] (?:GAIN [1-3] O -?[0-9]{1,2}\.[0-9] A|MUTE [1-3] O [01]"
-    r"|MTRX A P [1-3] O [01]|MTRX [34] M [1-3] O [03]"
+    r"#D[0-9AB] (?:GAIN [1-6] O -?[0-9]{1,2}\.[0-9] A|MUTE [1-6] O [01]"
+    r"|MTRX A P [1-6] O [01]|MTRX [34] M [1-6] O [03]"
     r"|GAIN [1-4] M -?[0-9]{1,2}\.[0-9] A|AGC [1-4] M [01]"
     r"|AGCSET [1-4] M -?[0-9]{1,2} -?[0-9]{1,2} [0-9]{1,2}\.[0-9]{2} [0-9]{1,2}\.[0-9]{2})"
 )

@@ -17,6 +17,10 @@ ROOMS = [
     {"id": "toilet", "name": "Toilet", "output": 1, "minDb": -60.0, "maxDb": -25.0},
     {"id": "kitchen-ext", "name": "Kitchen extension", "output": 2, "minDb": -60.0, "maxDb": -15.0},
     {"id": "laundry", "name": "Laundry room", "output": 3, "minDb": -60.0, "maxDb": -20.0},
+    # Added 2026-11-02. Caps are proposed defaults; change them in the panel's Settings.
+    {"id": "kitchen", "name": "Kitchen", "output": 4, "minDb": -60.0, "maxDb": -15.0},
+    {"id": "dining-room", "name": "Dining room", "output": 5, "minDb": -60.0, "maxDb": -15.0},
+    {"id": "terrace", "name": "Terrace", "output": 6, "minDb": -60.0, "maxDb": -15.0},
 ]
 
 # Sources: the matrix route into the rooms, the value that switches it on, and the inputs

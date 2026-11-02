@@ -14,16 +14,18 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 
 **Milestone 16: power switch in the panel** (version 0.3.1). Options: `power_entity` (switch / input_boolean / light; the KinCony relay that powers the ClearOne and the amplifier). Panel: ⏻ button with confirmation on switch-off, "switched off" banner with Turn on, "starting up" while connecting. `clearone_multiroom/power` calls homeassistant.turn_on/off, then `device.kick()` retries every 5 s for 3 minutes. Panel subscriptions are now held at hass level and look the device up on every push, so the panel keeps working after the entry reloads. A tests-found bug (state listener without @callback ran in a worker thread) was fixed before release. 9 device + 6 HA tests pass. Not tested with the real relay.
 
+**Version 0.3.3: six rooms.** Added Kitchen (O4), Dining room (O5) and Terrace (O6) to the integration (`const.py`) and the Mac app (`config/live-rooms.json`); write whitelists widened from outputs 1–3 to 1–6 in both clients. Caps -15 dB are proposed defaults. Terrace was at 0 dB on 2026-11-02 (above its cap; flagged in the panel, not changed). Read of all six rooms through the integration code confirmed on hardware (0.9 s).
+
 **Version 0.3.2: Reconfigure.** Settings → Devices & services → ClearOne Multiroom → ⋮ → Reconfigure changes host, port, login and device ID in place (empty password = keep), validated by connecting, entry reloaded; options (caps, scenes, Arylic, power) kept. 7 HA tests + 9 device tests pass.
 
 | Area | State |
 |---|---|
-| Rooms | Toilet (O1), Kitchen extension (O2), Laundry room (O3). Mono, one output each. O4–O12 are expansion outputs and hidden. |
+| Rooms | Toilet (O1), Kitchen extension (O2), Laundry room (O3), Kitchen (O4), Dining room (O5), Terrace (O6). Mono, one output each. O7–O12 hidden. |
 | Per room | Volume with cap, mute, source on/off (Arylic, Birds, Alexa; sources mix), "Playing" badge. |
 | Inputs tab | Input gain per source; AGC on/off and settings in a dialog. Arylic = M1+M2 written together. |
-| Settings | Per-room volume caps (Toilet -25, Kitchen extension -15, Laundry room -20 dB, confirmed by the user). |
+| Settings | Per-room volume caps (Toilet -25, Kitchen extension -15, Laundry room -20 dB confirmed by the user; Kitchen, Dining room, Terrace -15 dB proposed). |
 | Connection | Status pill, warning banner, automatic reconnect with back-off (5–30 s); no writes are replayed. |
-| Tests | `npm test`: 12 passing (Mac app). Python: 9 device tests + 6 Home Assistant tests passing. |
+| Tests | `npm test`: 12 passing (Mac app). Python: 9 device tests + 7 Home Assistant tests passing. |
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, and [docs/HARDWARE.md](docs/HARDWARE.md) for every hardware test performed.
 

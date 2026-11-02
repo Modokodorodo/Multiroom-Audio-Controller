@@ -72,7 +72,8 @@ async def test_entities_panel_and_websocket(hass: HomeAssistant, hass_ws_client,
         await ws.send_json({"id": 1, "type": f"{DOMAIN}/subscribe"})
         assert (await ws.receive_json())["success"]
         event = (await ws.receive_json())["event"]
-        assert [r["name"] for r in event["rooms"]] == ["Toilet", "Kitchen extension", "Laundry room"]
+        assert [r["name"] for r in event["rooms"]] == ["Toilet", "Kitchen extension", "Laundry room", "Kitchen", "Dining room", "Terrace"]
+        assert hass.states.get("number.terrace_volume") is not None and hass.states.get("media_player.dining_room") is not None
         await ws.send_json({"id": 2, "type": f"{DOMAIN}/room", "room_id": "toilet", "gain_db": -10})
         while (msg := await ws.receive_json())["id"] != 2:
             pass
@@ -176,7 +177,7 @@ async def test_options_choose_arylic_and_keep_caps(hass: HomeAssistant, socket_e
         result = await hass.config_entries.options.async_configure(result["flow_id"], {"arylic_entity": "media_player.arylic"})
         assert result["type"] == "create_entry"
         await hass.async_block_till_done()
-        assert entry.options == {"caps": {"toilet": -30, "kitchen-ext": -15.0, "laundry": -20.0}, "arylic_entity": "media_player.arylic"}
+        assert entry.options == {"caps": {"toilet": -30, "kitchen-ext": -15.0, "laundry": -20.0, "kitchen": -15.0, "dining-room": -15.0, "terrace": -15.0}, "arylic_entity": "media_player.arylic"}
         for _ in range(50):  # reloaded with the Arylic configured
             await hass.async_block_till_done()
             if entry.runtime_data and entry.runtime_data.status == "ready":

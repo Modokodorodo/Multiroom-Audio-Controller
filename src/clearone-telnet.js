@@ -4,7 +4,7 @@ import net from 'node:net';
 const QUERY = /^#D([0-9AB]) (?:VER|DID|ADPRESENT|(?:GAIN|MUTE) (?:[1-9]|1[0-2]) O|GAIN (?:[1-9]|1[0-2]) [ML]|(?:AGC|AGCSET) (?:[1-9]|1[0-2]) [ML]|MTRX (?:[1-9]|1[0-2]) [ML] (?:[1-9]|1[0-2]) O|MTRX [A-H] P (?:[1-9]|1[0-2]) O|LABEL (?:[1-9]|1[0-2]) [OML] 0)$/;
 const IAC = 255, DONT = 254, DO = 253, WONT = 252, WILL = 251, SB = 250, SE = 240;
 // The ONLY writes this client can send: absolute gain, explicit mute, and explicit on/off of the Arylic (P A), Birds (M3) and Alexa (M4) crosspoints to outputs 1-3, absolute gain, explicit AGC on/off and AGC settings of mic inputs 1-4 (Arylic M1+M2, Birds M3, Alexa M4).
-const WRITE = /^#D([0-9AB]) (?:GAIN [1-3] O -?\d{1,2}\.\d A|MUTE [1-3] O [01]|MTRX A P [1-3] O [01]|MTRX [34] M [1-3] O [03]|GAIN [1-4] M -?\d{1,2}\.\d A|AGC [1-4] M [01]|AGCSET [1-4] M -?\d{1,2} -?\d{1,2} \d{1,2}\.\d{2} \d{1,2}\.\d{2})$/;
+const WRITE = /^#D([0-9AB]) (?:GAIN [1-6] O -?\d{1,2}\.\d A|MUTE [1-6] O [01]|MTRX A P [1-6] O [01]|MTRX [34] M [1-6] O [03]|GAIN [1-4] M -?\d{1,2}\.\d A|AGC [1-4] M [01]|AGCSET [1-4] M -?\d{1,2} -?\d{1,2} \d{1,2}\.\d{2} \d{1,2}\.\d{2})$/;
 export class ClearOneTelnet {
   constructor({host, port = 23, timeoutMs = 3000}) {
     Object.assign(this, {host, port, timeoutMs});

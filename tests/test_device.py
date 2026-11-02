@@ -33,9 +33,12 @@ class FakeClearOne:
         for n in (1, 2, 3, 4):
             self.v[f"AGC {n} M"] = "0" if n == 3 else "1"
             self.v[f"AGCSET {n} M"] = "-25 0 2.00 " + ("6.00" if n == 3 else "18.00")
-        for o in (1, 2, 3):
-            self.v[f"LABEL {o} O 0"] = ["WC", "2de Kelder", "Waskot"][o - 1]
-            self.v[f"MTRX A P {o} O"] = "1"
+        # Outputs 4-6 as read from the real device on 2026-11-02 (no managed sources routed there).
+        self.v.update({"GAIN 4 O": "-47.50 A", "GAIN 5 O": "-38.50 A", "GAIN 6 O": "0.00 A",
+                       "MUTE 4 O": "0", "MUTE 5 O": "0", "MUTE 6 O": "0"})
+        for o in (1, 2, 3, 4, 5, 6):
+            self.v[f"LABEL {o} O 0"] = ["WC", "2de Kelder", "Waskot", "Kitchen", "Dining Room", "Terras"][o - 1]
+            self.v[f"MTRX A P {o} O"] = "1" if o <= 3 else "0"
             self.v[f"MTRX 3 M {o} O"] = "3" if o == 1 else "0"
             self.v[f"MTRX 4 M {o} O"] = "0"
 
@@ -111,7 +114,7 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
                     "#D0 PRESET 1", "#D0 GAIN 13 O", "#D0 VER\n"]:
             with self.assertRaisesRegex(ClearOneError, "Refused"):
                 await c.query(bad)
-        for bad in ["#D0 GAIN 1 O -30.0", "#D0 GAIN 1 O -30.0 R", "#D0 GAIN 4 O -30.0 A", "#D0 MUTE 1 O 2",
+        for bad in ["#D0 GAIN 1 O -30.0", "#D0 GAIN 1 O -30.0 R", "#D0 GAIN 7 O -30.0 A", "#D0 MUTE 1 O 2",
                     "#D0 MTRX 4 M 1 O 1", "#D0 MTRX 1 M 1 O 3", "#D0 MTRX B P 1 O 1", "#D0 MTRXLVL 3 M 1 O -10.0 A",
                     "#D0 GAIN 5 M -10.0 A", "#D0 AGC 1 M 2", "#D0 AGCSET 1 M -25 0 2 18", "#D0 MTRXCLEAR",
                     "#D0 MUTE 1 O 1\n"]:
@@ -150,7 +153,9 @@ class DeviceTests(unittest.IsolatedAsyncioTestCase):
         d = await self.make()
         s = d.state()
         self.assertEqual(s["status"], "ready")
-        self.assertEqual([r["name"] for r in s["rooms"]], ["Toilet", "Kitchen extension", "Laundry room"])
+        self.assertEqual([r["name"] for r in s["rooms"]], ["Toilet", "Kitchen extension", "Laundry room", "Kitchen", "Dining room", "Terrace"])
+        terrace = s["rooms"][5]
+        self.assertEqual((terrace["gainDb"], terrace["maxDb"], terrace["playing"]), (0.0, -15.0, []))  # above cap: shown, not changed
         toilet = s["rooms"][0]
         self.assertEqual((toilet["gainDb"], toilet["muted"], toilet["deviceLabel"]), (-35.0, False, "WC"))
         self.assertEqual([(m["id"], m["on"], m["present"]) for m in toilet["mix"]],

@@ -36,7 +36,7 @@ After each update: restart Home Assistant, then refresh the page.
 
 ### Adapting to your installation
 
-The room/source mapping is set in [`custom_components/clearone_multiroom/const.py`](custom_components/clearone_multiroom/const.py) and currently describes one specific installation: three mono rooms on outputs 1–3, and sources Arylic (processing block A, inputs M1+M2), Birds (M3) and Alexa (M4). Change `ROOMS` and `SOURCES` there for another setup, and widen the command whitelist in `clearone.py` if you use other outputs or inputs.
+The room/source mapping is set in [`custom_components/clearone_multiroom/const.py`](custom_components/clearone_multiroom/const.py) and currently describes one specific installation: six mono rooms on outputs 1–6, and sources Arylic (processing block A, inputs M1+M2), Birds (M3) and Alexa (M4). Change `ROOMS` and `SOURCES` there for another setup, and widen the command whitelist in `clearone.py` if you use outputs beyond 6 or other inputs.
 
 ## Safety design
 
