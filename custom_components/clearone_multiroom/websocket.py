@@ -25,7 +25,7 @@ def _device(hass: HomeAssistant) -> MultiroomDevice | None:
 def async_register_commands(hass: HomeAssistant) -> None:
     if hass.data.get(f"{DOMAIN}_ws"):
         return
-    for handler in (ws_power, ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
+    for handler in (ws_connection, ws_power, ws_subscribe, ws_room, ws_input, ws_cap, ws_scene_save, ws_scene_update, ws_scene_delete, ws_scene_apply):
         websocket_api.async_register_command(hass, handler)
     hass.data[f"{DOMAIN}_ws"] = True
 
@@ -212,3 +212,12 @@ async def ws_scene_apply(hass: HomeAssistant, connection: websocket_api.ActiveCo
         connection.send_error(msg["id"], "not_loaded", "ClearOne Multiroom is not loaded")
         return
     await _run(connection, msg, device.apply_scene(msg["scene_id"]))
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): f"{DOMAIN}/connection", vol.Required("action"): vol.In(["pause", "resume", "reconnect"]),
+})
+@callback
+def ws_connection(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Pause or resume communication with the ClearOne, or reconnect now."""
+    _sync_call(hass, connection, msg, lambda d: getattr(d, msg["action"])())

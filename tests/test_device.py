@@ -251,6 +251,53 @@ class DeviceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((d.scenes, saved[-1]), ([], []))
         d.close()
 
+    async def test_pause_resume_and_reconnect(self) -> None:
+        self.fake = FakeClearOne()
+        port = await self.fake.start()
+        d = MultiroomDevice("127.0.0.1", port, "u", "p", timeout=0.5)
+        task = asyncio.create_task(d.run())
+
+        async def until(cond) -> None:
+            for _ in range(100):
+                await asyncio.sleep(0.02)
+                if cond():
+                    return
+            self.fail(f"condition not reached (status={d.status}, logins={logins()}, error={d.error})")
+
+        logins = lambda: self.fake.received.count("p")  # noqa: E731 - one password line per login
+        try:
+            await self._pause_resume_steps(d, until, logins)
+        finally:
+            await self._stop(task)
+
+    async def _pause_resume_steps(self, d, until, logins) -> None:
+        await until(lambda: d.status == "ready")
+        self.assertEqual(logins(), 1)
+        d.pause()
+        await until(lambda: d.status == "paused")
+        self.assertIsNone(d.client)
+        n = len(self.fake.received)
+        await asyncio.sleep(0.3)
+        self.assertEqual(len(self.fake.received), n)  # nothing sent while paused
+        with self.assertRaisesRegex(ClearOneError, "not ready"):
+            await d.set_room_mute("toilet", True)
+        d.reconnect()  # ignored while paused
+        await asyncio.sleep(0.1)
+        self.assertEqual(d.status, "paused")
+        d.resume()
+        await until(lambda: d.status == "ready")
+        self.assertEqual(logins(), 2)
+        d.reconnect()
+        await until(lambda: d.status == "ready" and logins() == 3)
+
+    @staticmethod
+    async def _stop(task) -> None:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
     async def test_run_loop_recovers_after_device_restart(self) -> None:
         self.fake = FakeClearOne()
         port = await self.fake.start()

@@ -17,7 +17,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn.primary{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color,#fff)}
 .btn:disabled{opacity:.5;cursor:default}
 .banner{border:1px solid var(--warning-color);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:14px}
-.banner .btn{margin-left:8px}.btn.power{min-width:72px}
+.banner .btn{margin-left:8px}.conn-actions{margin-top:0}.btn.power{min-width:72px}
 .banner.error{border-color:var(--error-color);color:var(--error-color)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--divider-color);margin-bottom:16px}
 .tabs button{border:none;background:none;padding:10px 16px;color:var(--secondary-text-color);border-bottom:3px solid transparent;margin-bottom:-1px}
@@ -127,7 +127,7 @@ class ClearOneMultiroomPanel extends HTMLElement {
           <div id="scenes" class="grid" aria-label="Saved scenes"></div>
         </section>
         <section id="inputs-view" hidden><p class="hint">Input gain sets how loud a source is at its input, in every room. AGC is a back-end setting; you rarely need this tab.</p><div id="inputs" class="grid" aria-label="Inputs"></div></section>
-        <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p></div></section>
+        <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p></div><div class="actions conn-actions"><button class="btn" id="c-pause"></button><button class="btn" id="c-reconnect">Reconnect now</button></div></section>
       </main>
       <dialog id="settings" aria-labelledby="s-title"><h3 id="s-title">Settings</h3><p class="hint"><strong>Maximum volume per room.</strong> Sliders cannot go above this. Changing a cap never changes the device or the current volume.</p><div id="caps"></div><div class="actions"><button class="btn" data-close>Close</button></div></dialog>
       <dialog id="agc" aria-labelledby="a-title"><h3 id="a-title"></h3>
@@ -204,7 +204,8 @@ class ClearOneMultiroomPanel extends HTMLElement {
     const r = this.shadowRoot, s = this._state, ready = s?.status === 'ready';
     const err = r.getElementById('error'); err.hidden = !this._error; err.textContent = this._error;
     const power = s?.power, off = power?.on === false;
-    const pillText = !s ? 'Loading…' : ready ? 'Connected' : off ? 'Switched off' : s.status === 'connecting' ? 'Connecting…' : 'Not reachable';
+    const paused = s?.paused === true;
+    const pillText = !s ? 'Loading…' : ready ? 'Connected' : paused ? 'Paused' : off ? 'Switched off' : s.status === 'connecting' ? 'Connecting…' : 'Not reachable';
     const pw = r.getElementById('power');
     pw.hidden = !power;
     if (power) {
@@ -224,7 +225,12 @@ class ClearOneMultiroomPanel extends HTMLElement {
     banner.hidden = !s || ready;
     banner.replaceChildren();
     if (s && !ready) {
-      if (off) {
+      if (paused) {
+        banner.append('Communication with the ClearOne is paused; controls are disabled. ');
+        const go = document.createElement('button'); go.className = 'btn primary'; go.textContent = 'Resume';
+        go.disabled = !!this._pending; go.onclick = () => this._call('connection', {action: 'resume'}, 'connection');
+        banner.append(go);
+      } else if (off) {
         banner.append('The ClearOne and the amplifier are switched off. ');
         const on = document.createElement('button'); on.className = 'btn primary'; on.textContent = 'Turn on';
         on.disabled = !!this._pending; on.onclick = () => this._call('power', {on: true}, 'power');
@@ -237,8 +243,16 @@ class ClearOneMultiroomPanel extends HTMLElement {
     if (s) {
       const last = s.updatedAt ? new Date(s.updatedAt).toLocaleTimeString() : 'never';
       r.getElementById('c-status').textContent = `ClearOne ${s.device.host} · ${ready ? 'connected' : s.status}`;
+      const pause = r.getElementById('c-pause'), again = r.getElementById('c-reconnect');
+      pause.textContent = paused ? 'Resume communication' : 'Pause communication';
+      pause.title = paused ? '' : 'Stop talking to the ClearOne, e.g. while you use Converge Console';
+      pause.disabled = again.disabled = !!this._pending;
+      again.hidden = paused;
+      pause.onclick = () => this._call('connection', {action: paused ? 'resume' : 'pause'}, 'connection');
+      again.onclick = () => this._call('connection', {action: 'reconnect'}, 'connection');
       r.getElementById('c-detail').textContent = ready
         ? `Firmware ${s.device.firmware ?? '?'}. Last full read ${last}. Values are read back from the device.`
+        : paused ? `Paused: no connection and no polling until you resume. Showing last known values from ${last}.`
         : `${s.error ?? ''} Showing last known values from ${last}.`;
     }
     if (!s || this._editing()) return;

@@ -54,6 +54,8 @@ class MultiroomDevice:
         self._op = asyncio.Lock()  # a refresh and a change never interleave
         self._wake = asyncio.Event()
         self._fast_until = 0.0
+        self.paused = False
+        self._restart = False
         self.power_entity: str | None = None  # set by the integration; shown in the panel
         self.on_caps_changed: Callable[[dict[str, float]], None] | None = None
         self.scenes: list[dict[str, Any]] = [dict(sc) for sc in (scenes or [])]
@@ -72,17 +74,36 @@ class MultiroomDevice:
                 _LOGGER.exception("Listener failed")
 
     # ---- lifecycle ---------------------------------------------------------------------------
+    async def _sleep(self, seconds: float) -> None:
+        """Sleep, but wake early for pause, resume, reconnect or power-on."""
+        try:
+            await asyncio.wait_for(self._wake.wait(), seconds)
+        except asyncio.TimeoutError:
+            pass
+        self._wake.clear()
+
     async def run(self) -> None:
-        """Connect, poll, and reconnect with back-off (5 s doubling to 30 s) until cancelled."""
+        """Connect, poll, and reconnect with back-off (5 s doubling to 30 s) until cancelled.
+        While paused: no connection and no polling until resume() or reconnect()."""
         delay = 5
         loop = asyncio.get_running_loop()
         while True:
+            if self.paused:
+                self.close()
+                self.status, self.error, self.next_retry_at = "paused", None, None
+                self._notify()
+                while self.paused:
+                    await self._sleep(3600)
+                continue
             try:
+                self._restart = False
                 await self.connect()
                 delay = 5
                 last_full = loop.time()
-                while True:
-                    await asyncio.sleep(PRESENCE_S)
+                while not (self.paused or self._restart):
+                    await self._sleep(PRESENCE_S)
+                    if self.paused or self._restart:
+                        break
                     if loop.time() - last_full >= FULL_REFRESH_S:
                         await self.refresh()
                         last_full = loop.time()
@@ -92,16 +113,39 @@ class MultiroomDevice:
                 self.close()
                 raise
             except Exception as err:  # noqa: BLE001 - any failure leads to a clean reconnect
+                if self.paused or self._restart:
+                    continue
                 self._fail(err)
                 self.next_retry_at = datetime.fromtimestamp(
                     datetime.now(timezone.utc).timestamp() + delay, timezone.utc).isoformat()
                 self._notify()
-                try:
-                    await asyncio.wait_for(self._wake.wait(), delay)
-                except asyncio.TimeoutError:
-                    pass
-                self._wake.clear()
+                await self._sleep(delay)
+                if self._restart:
+                    delay = 5
+                    continue
                 delay = 5 if loop.time() < self._fast_until else min(delay * 2, 30)
+
+    def pause(self) -> None:
+        """Stop talking to the ClearOne (e.g. while using Converge Console) until resume()."""
+        self.paused = True
+        self.close()
+        self.status, self.error, self.next_retry_at = "paused", None, None
+        self._wake.set()
+        self._notify()
+
+    def resume(self) -> None:
+        self.paused = False
+        self.reconnect()
+
+    def reconnect(self) -> None:
+        """Drop the connection and connect again now (also skips a back-off wait)."""
+        if self.paused:
+            return
+        self._restart = True
+        self.close()
+        self.status, self.next_retry_at = "connecting", None
+        self._wake.set()
+        self._notify()
 
     def kick(self) -> None:
         """Power was just switched on: retry now and every 5 s for 3 minutes while the ClearOne boots."""
@@ -219,7 +263,7 @@ class MultiroomDevice:
                 "agc": same("agc"), "present": self.present(source_id)}
 
     def state(self) -> dict[str, Any]:
-        return {"status": self.status, "error": self.error, "updatedAt": self.updated_at,
+        return {"status": self.status, "paused": self.paused, "error": self.error, "updatedAt": self.updated_at,
                 "nextRetryAt": self.next_retry_at,
                 "device": {"host": self.host, "id": self.id, "firmware": self.firmware},
                 "inputRange": dict(INPUT_GAIN_RANGE), "rooms": [self.room(r["id"]) for r in self.rooms],

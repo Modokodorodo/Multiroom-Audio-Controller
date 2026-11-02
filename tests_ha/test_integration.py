@@ -295,3 +295,30 @@ async def test_reconfigure_new_address_keeps_options(hass: HomeAssistant, socket
     finally:
         await old.stop()
         await new.stop()
+
+
+
+async def test_pause_and_reconnect_from_panel(hass: HomeAssistant, hass_ws_client, socket_enabled) -> None:
+    fake = FakeClearOne()
+    entry = await _setup(hass, fake)
+    try:
+        ws = await hass_ws_client(hass)
+        for i, action in enumerate(["pause", "resume", "reconnect"], start=1):
+            await ws.send_json({"id": i, "type": f"{DOMAIN}/connection", "action": action})
+            assert (await ws.receive_json())["success"]
+            if action == "pause":
+                await hass.async_block_till_done()
+                assert entry.runtime_data.status == "paused"
+                assert hass.states.get("number.toilet_volume").state == "unavailable"
+            for _ in range(60):
+                await hass.async_block_till_done()
+                if action == "pause" or entry.runtime_data.status == "ready":
+                    break
+                await asyncio.sleep(0.05)
+            if action != "pause":
+                assert entry.runtime_data.status == "ready"
+        await ws.send_json({"id": 9, "type": f"{DOMAIN}/connection", "action": "explode"})
+        assert not (await ws.receive_json())["success"]
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await fake.stop()

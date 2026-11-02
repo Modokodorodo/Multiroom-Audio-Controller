@@ -14,7 +14,7 @@ It talks to the ClearOne directly over Telnet from inside Home Assistant. No ext
   - **Inputs**: input gain per source, and automatic gain control (AGC) on/off plus its settings. These are back-end settings, so they are only in the panel.
   - **Settings**: per-room volume caps.
   - **Power**: optional on/off button for the relay that powers the ClearOne and the amplifier.
-  - Connection status with automatic reconnect; the last known values stay visible while the device is unreachable.
+  - Connection status with automatic reconnect; the last known values stay visible while the device is unreachable. At the bottom: **Pause communication** (no connection and no polling until you resume, e.g. while you use Converge Console) and **Reconnect now**.
 - **A device per room**, in an area with the room's name, with entities for dashboards, automations and Alexa routines: **Volume** (number, capped), **Mute** (switch), one **switch per source**, **Playing** (binary sensor).
 - **A speaker per room for Music Assistant** (`media_player.<room>`). It streams through the Arylic network streamer: playing to a room switches Arylic on in that room; the speaker's volume and mute are the room's volume and mute in the ClearOne. There is one Arylic, so all room speakers share one stream. The Arylic itself is kept at 100 % volume.
 - **Scene entities** (`scene.<name>`) for every saved scene, usable on dashboards, in automations and with Alexa. Scenes are stored in Home Assistant, never as ClearOne presets.
