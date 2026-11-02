@@ -6,7 +6,7 @@ Confirmed by the user on 2026-10-16 unless noted. The machine-readable version i
 
 | Field | Value | Evidence |
 |---|---|---|
-| Host | 192.168.1.175 | User-supplied; Telnet works |
+| Host | 192.168.1.241 | Since 2026-11 (was 192.168.1.175); confirmed with VER/DID on 2026-11-02 |
 | Port | 23 | Manual and connection |
 | Type / ID | D / 0 | `VER` and `DID` replies |
 | Firmware | 4.4.0.31 | `VER` reply |

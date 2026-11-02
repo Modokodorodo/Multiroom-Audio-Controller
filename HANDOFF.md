@@ -29,7 +29,7 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, an
 
 ## Device and permissions
 
-- ClearOne at 192.168.1.175 until 2026-11; the user reported a new IP address (not recorded here yet), TCP 23, device type D, ID 0, firmware 4.4.0.31. Change it in Home Assistant with **Reconfigure** (v0.3.2).
+- ClearOne at **192.168.1.241** since 2026-11 (was 192.168.1.175; new address confirmed read-only with VER/DID on 2026-11-02), TCP 23, device type D, ID 0, firmware 4.4.0.31. Change it in Home Assistant with **Reconfigure** (v0.3.2).
 - Login: Console credentials (factory default; the user has decided to keep it, do not raise this again). Credentials are passed via environment variables and are not stored in this repository.
 - The user has authorized live changes made through the app: room gain, mute, source routing on/off for the configured rooms, input gain, AGC on/off and AGC settings. For any **new kind** of write, or settings outside the app, ask the user first and read the current value before changing it.
 - Never clear the matrix, run presets/macros, change reporting settings, or change unrelated routes or DSP. Never replay writes after a reconnect.
@@ -37,7 +37,7 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, an
 ## Run
 
 ```sh
-CLEARONE_HOST=192.168.1.175 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
+CLEARONE_HOST=192.168.1.241 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
 ```
 
 Open http://127.0.0.1:8787. `npm start` alone runs the mock.

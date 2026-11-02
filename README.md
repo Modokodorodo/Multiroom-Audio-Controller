@@ -60,7 +60,7 @@ The same controls as a local web page served by a small Node.js service (Node 22
 
 ```sh
 npm start                                        # mock mode with demo rooms: http://127.0.0.1:8787
-CLEARONE_HOST=192.168.1.175 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
+CLEARONE_HOST=192.168.1.241 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
 ```
 
 Open **http://127.0.0.1:8787** (numeric address only). Credentials come from the environment, never from files. Mapping: `config/live-rooms.json`; caps saved from the page: `config/caps.local.json` (git-ignored). The service listens on 127.0.0.1 only and rejects foreign `Host`/`Origin` headers.

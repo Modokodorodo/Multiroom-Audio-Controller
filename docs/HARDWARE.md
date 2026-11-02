@@ -131,3 +131,7 @@ M1-M4 (Arylic L/R, Birds, Alexa): AEC 0 (off), noise cancellation NCSEL 0 (off, 
 Processing block A (Arylic sum): filter nodes 1-2 on, 3-15 off (`FILTER A P n` query returned 0; filter type/meaning not interpreted), compressor COMPSEL 0 (off), delay DELAYSEL 0 (off).
 `ADPRESENT` returned `7 0 0 0 0`: per the guide the first field is an input bitmap, so 7 = inputs 1-3 have signal (Arylic L/R and Birds), matching the "Pres" indicators in the user's screenshot. The meaning of the remaining fields (documented as outputs and processors) did not match expectations (Birds routed to O1 but outputs field 0), so only the input part is considered understood.
 Output filters: `FILTSEL n O` is an argument error; the guide lists filters only for M and P groups. Safety mute SFTYMUTE 0. Nothing written.
+
+## New IP address (2026-11-02, hardware-confirmed)
+
+The ClearOne moved from 192.168.1.175 to **192.168.1.241** (user report). Read-only check: login works, `VER` 4.4.0.31, `DID` 0; the old address refuses connections. Earlier sections keep the old address as it was at the time. A DHCP reservation in the router is recommended.
