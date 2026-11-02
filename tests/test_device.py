@@ -30,6 +30,8 @@ class FakeClearOne:
                   "MUTE 1 O": "0", "MUTE 2 O": "0", "MUTE 3 O": "0",
                   "GAIN 1 M": "10.00 A", "GAIN 2 M": "10.00 A", "GAIN 3 M": "-5.00 A", "GAIN 4 M": "0.00 A",
                   "VER": "4.4.0.31", "ADPRESENT": "5 0 0 0 0"}
+        # Input levels (LVL position I): Arylic and Birds have sound, Alexa only noise.
+        self.v.update({"LVL 1 M I": "-30.00", "LVL 2 M I": "-32.00", "LVL 3 M I": "-40.00", "LVL 4 M I": "-80.00"})
         for n in (1, 2, 3, 4):
             self.v[f"AGC {n} M"] = "0" if n == 3 else "1"
             self.v[f"AGCSET {n} M"] = "-25 0 2.00 " + ("6.00" if n == 3 else "18.00")
@@ -143,10 +145,13 @@ class DeviceTests(unittest.IsolatedAsyncioTestCase):
         self.fake = FakeClearOne(**kw)
         port = await self.fake.start()
         d = MultiroomDevice("127.0.0.1", port, "u", "p", timeout=1)
+        self.devices = [*getattr(self, "devices", []), d]
         await d.connect()
         return d
 
     async def asyncTearDown(self) -> None:
+        for d in getattr(self, "devices", []):
+            d.close()  # also after a failed assertion, so the fake server can shut down
         await self.fake.stop()
 
     async def test_reads_rooms_inputs_and_presence(self) -> None:
@@ -164,7 +169,7 @@ class DeviceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([(i["id"], i["gainDb"], i["agc"], i["present"]) for i in s["inputs"]],
                          [("arylic", 10.0, True, True), ("birds", -5.0, False, True), ("alexa", 0.0, True, False)])
         writes = [l for l in self.fake.received[2:] if not re.fullmatch(
-            r"#D0 (VER|ADPRESENT|LABEL [0-9]+ O 0|GAIN [0-9]+ [OM]|MUTE [0-9]+ O|MTRX [0-9A]+ [MP] [0-9]+ O|AGC [0-9]+ M|AGCSET [0-9]+ M)", l)]
+            r"#D0 (VER|ADPRESENT|LVL [0-9]+ M I|LABEL [0-9]+ O 0|GAIN [0-9]+ [OM]|MUTE [0-9]+ O|MTRX [0-9A]+ [MP] [0-9]+ O|AGC [0-9]+ M|AGCSET [0-9]+ M)", l)]
         self.assertEqual(writes, [])  # reading never writes
         d.close()
 
@@ -249,6 +254,36 @@ class DeviceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((d.scenes[0]["name"], d.scenes[0]["rooms"]["laundry"]["gainDb"]), ("Beneden", -20.0))
         d.delete_scene(sid)
         self.assertEqual((d.scenes, saved[-1]), ([], []))
+        d.close()
+
+    async def test_sound_detection_threshold_and_ignored_sources(self) -> None:
+        d = await self.make()
+        self.assertEqual(d.levels, {"arylic": -30.0, "birds": -40.0, "alexa": -80.0})
+        # Monitored = not ignored and switched on in an unmuted room (Alexa is routed nowhere here).
+        self.assertEqual(d.monitored_sources(), ["arylic", "birds"])
+        self.assertIsNotNone(d.last_sound_at)
+        s = d.state()
+        self.assertEqual([(i["id"], i["levelDb"], i["present"]) for i in s["inputs"]],
+                         [("arylic", -30.0, True), ("birds", -40.0, True), ("alexa", -80.0, False)])
+        # Arylic paused: only noise left. Birds is ignored, so nothing counts as sound any more.
+        self.fake.v.update({"LVL 1 M I": "-61.00", "LVL 2 M I": "-62.00"})
+        d.ignored_sources = {"birds"}
+        d.last_sound_at = None
+        await d.poll_presence()
+        self.assertEqual(d.monitored_sources(), ["arylic"])
+        self.assertIsNone(d.last_sound_at)
+        self.assertEqual(d.room("toilet")["playing"], ["Birds"])  # the badge still shows Birds
+        # A noisy channel below the threshold does not count either; raising the level does.
+        self.fake.v["LVL 1 M I"] = "-46.00"
+        await d.poll_presence()
+        self.assertIsNone(d.last_sound_at)
+        self.fake.v["LVL 1 M I"] = "-20.00"
+        await d.poll_presence()
+        self.assertIsNotNone(d.last_sound_at)
+        # A source switched on only in muted rooms does not count.
+        for room in ("toilet", "kitchen-ext", "laundry"):
+            await d.set_room_mute(room, True)
+        self.assertEqual(d.monitored_sources(), [])
         d.close()
 
     async def test_pause_resume_and_reconnect(self) -> None:

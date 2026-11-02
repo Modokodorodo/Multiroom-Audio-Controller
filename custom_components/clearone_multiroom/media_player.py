@@ -67,7 +67,18 @@ class RoomSpeaker(RoomEntity, MediaPlayerEntity):
         return self.hass.states.get(self.arylic) if self.arylic else None
 
     @property
+    def available(self) -> bool:
+        # With auto power the speaker stays usable while the system is off: playing switches it on.
+        return super().available or (self.device.ensure_power is not None and not self.device.paused)
+
+    async def _power_up(self) -> None:
+        if self.device.ensure_power is not None and self.device.status != "ready":
+            await self.device.ensure_power()
+
+    @property
     def state(self) -> MediaPlayerState | None:
+        if self.device.status != "ready":
+            return MediaPlayerState.OFF
         if not self._arylic_on:
             return MediaPlayerState.OFF
         st = self._arylic_state
@@ -121,6 +132,7 @@ class RoomSpeaker(RoomEntity, MediaPlayerEntity):
             raise HomeAssistantError(str(err)) from err
 
     async def async_turn_on(self) -> None:
+        await self._power_up()
         await self._do(self.device.set_room_source(self.room_id, ARYLIC_SOURCE_ID, True))
 
     async def async_turn_off(self) -> None:
@@ -145,6 +157,7 @@ class RoomSpeaker(RoomEntity, MediaPlayerEntity):
         await self.hass.services.async_call(MP_DOMAIN, service, {ATTR_ENTITY_ID: self.arylic, **(data or {})}, blocking=True)
 
     async def async_play_media(self, media_type: str, media_id: str, **kwargs: Any) -> None:
+        await self._power_up()
         if not self._arylic_on:
             await self.async_turn_on()
         data = {"media_content_type": media_type, "media_content_id": media_id}
@@ -157,6 +170,7 @@ class RoomSpeaker(RoomEntity, MediaPlayerEntity):
         await self._arylic("play_media", data)
 
     async def async_media_play(self) -> None:
+        await self._power_up()
         if not self._arylic_on:
             await self.async_turn_on()
         await self._arylic("media_play")

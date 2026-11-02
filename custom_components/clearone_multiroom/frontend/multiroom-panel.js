@@ -17,6 +17,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn.primary{background:var(--primary-color);border-color:var(--primary-color);color:var(--text-primary-color,#fff)}
 .btn:disabled{opacity:.5;cursor:default}
 .banner{border:1px solid var(--warning-color);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:14px}
+.level{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--secondary-text-color);margin-top:10px;flex-wrap:wrap}
+.meter{position:relative;flex:1;min-width:120px;height:6px;border-radius:3px;background:var(--secondary-background-color)}
+.meter>span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--primary-color);transition:width .4s}
+.meter>i{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--warning-color,#ffa600)}
+.tag{padding:2px 8px;border-radius:999px;border:1px solid var(--divider-color);font-size:11px}
+#c-auto{margin-top:6px}
 .banner .btn{margin-left:8px}.conn-actions{margin-top:0}.btn.power{min-width:72px}
 .banner.error{border-color:var(--error-color);color:var(--error-color)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--divider-color);margin-bottom:16px}
@@ -127,7 +133,7 @@ class ClearOneMultiroomPanel extends HTMLElement {
           <div id="scenes" class="grid" aria-label="Saved scenes"></div>
         </section>
         <section id="inputs-view" hidden><p class="hint">Input gain sets how loud a source is at its input, in every room. AGC is a back-end setting; you rarely need this tab.</p><div id="inputs" class="grid" aria-label="Inputs"></div></section>
-        <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p></div><div class="actions conn-actions"><button class="btn" id="c-pause"></button><button class="btn" id="c-reconnect">Reconnect now</button></div></section>
+        <section class="conn" id="conn" aria-label="Connection"><div><strong id="c-status"></strong><p id="c-detail"></p><p id="c-auto"></p></div><div class="actions conn-actions"><button class="btn" id="c-pause"></button><button class="btn" id="c-reconnect">Reconnect now</button></div></section>
       </main>
       <dialog id="settings" aria-labelledby="s-title"><h3 id="s-title">Settings</h3><p class="hint"><strong>Maximum volume per room.</strong> Sliders cannot go above this. Changing a cap never changes the device or the current volume.</p><div id="caps"></div><div class="actions"><button class="btn" data-close>Close</button></div></dialog>
       <dialog id="agc" aria-labelledby="a-title"><h3 id="a-title"></h3>
@@ -189,6 +195,26 @@ class ClearOneMultiroomPanel extends HTMLElement {
     r.getElementById('inputs-view').hidden = tab !== 'inputs';
     r.getElementById('tab-rooms').setAttribute('aria-selected', String(tab === 'rooms'));
     r.getElementById('tab-inputs').setAttribute('aria-selected', String(tab === 'inputs'));
+  }
+
+  // One line describing the automatic switch-off.
+  _autoOffText(a) {
+    const info = a?.autoOff;
+    if (!info) return '';
+    const mins = info.minutes, t = iso => new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    switch (info.state) {
+      case 'no_power_switch': return 'Automatic switch-off: needs a power switch (integration → Configure).';
+      case 'disabled': return 'Automatic switch-off is turned off.';
+      case 'off': return `Automatic switch-off: system is off. It switches off after ${mins} min without sound.`;
+      case 'paused': return 'Automatic switch-off: on hold while communication is paused.';
+      case 'waiting': return 'Automatic switch-off: waiting for the ClearOne.';
+      case 'switching_off': return `No sound for ${mins} min: switching off.`;
+      case 'counting': {
+        const left = Math.max(0, Math.round((new Date(info.offAt) - Date.now()) / 60000));
+        return `Automatic switch-off after ${mins} min without sound (threshold ${a.thresholdDb} dB): last sound ${t(info.lastActivity)}, switches off around ${t(info.offAt)} (≈${left} min).`;
+      }
+      default: return '';
+    }
   }
 
   _input(id) { return this._state?.inputs.find(i => i.id === id); }
@@ -254,6 +280,7 @@ class ClearOneMultiroomPanel extends HTMLElement {
         ? `Firmware ${s.device.firmware ?? '?'}. Last full read ${last}. Values are read back from the device.`
         : paused ? `Paused: no connection and no polling until you resume. Showing last known values from ${last}.`
         : `${s.error ?? ''} Showing last known values from ${last}.`;
+      r.getElementById('c-auto').textContent = this._autoOffText(s.activity);
     }
     if (!s || this._editing()) return;
     this._renderRooms(s, ready);
@@ -345,6 +372,10 @@ class ClearOneMultiroomPanel extends HTMLElement {
       card.innerHTML = `<div class="card-head"><span>${inp.channels.map(c => c.group + c.channel).join(' + ')}${inp.channels.length > 1 ? ' · set together' : ''}</span>
           <span class="badge ${inp.present ? 'on' : ''}">${inp.present === null ? 'Unknown' : inp.present ? 'Signal' : 'No signal'}</span></div>
         <h2>${esc(inp.name)}</h2>
+        <div class="level"><span>Level ${inp.levelDb == null ? '—' : Math.round(inp.levelDb) + ' dB'}</span>
+          <span class="meter" aria-hidden="true"><span style="width:${inp.levelDb == null ? 0 : Math.max(0, Math.min(100, (inp.levelDb + 90) / 90 * 100))}%"></span>
+          ${s.activity ? `<i style="left:${Math.max(0, Math.min(100, (s.activity.thresholdDb + 90) / 90 * 100))}%" title="Sound threshold ${s.activity.thresholdDb} dB"></i>` : ''}</span>
+          ${inp.ignored ? '<span class="tag">ignored for auto-off</span>' : ''}</div>
         <div class="label"><span>Input gain</span><output>${known ? inp.gainDb + ' dB' : 'Channels differ'}</output></div>
         <input type="range" min="${s.inputRange.min}" max="${s.inputRange.max}" step="0.5" value="${known ? inp.gainDb : s.inputRange.min}" aria-label="${esc(inp.name)} input gain in dB">
         <div class="limits"><span>${s.inputRange.min} dB</span><span>Max ${s.inputRange.max} dB</span></div>

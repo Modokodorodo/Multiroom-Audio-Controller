@@ -41,4 +41,4 @@ Status legend: **Done**, **Next**, **Idea**, **Later phase** (from the original 
 | L1b | Music Assistant virtual speaker per room | media_player per room that streams via the Arylic and routes it to the room. One Arylic = one stream at a time. | **Done**; playback confirmed by the user with the real Arylic and Music Assistant (2026-10-17) |
 | L2 | Move the service to the home server | Covered by L1: the integration runs inside Home Assistant. | **Done** |
 | L3 | KinCony amplifier power control | Power switch entity chosen in the integration options; on/off button in the panel. | **Done** (2026-10-17, pending test with the real relay) |
-| L4 | Idle shutdown | Combine audio presence (A1) with presence detection: for example "no signal for 30 minutes and nobody home, switch the amplifier off". Needs L1 and L3. | Later phase |
+| L4 | Idle shutdown | Switch-off after N minutes without sound above a threshold (ignored sources), switch-on with the Arylic / room speakers; countdown sensor. Presence detection not included (user: Echo/Alexa playback is switched on manually). | **Done** (2026-11-02, v0.3.5; pending test with the real relay) |

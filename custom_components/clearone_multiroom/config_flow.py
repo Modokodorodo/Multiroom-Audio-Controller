@@ -9,10 +9,16 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResu
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.selector import EntitySelector, EntitySelectorConfig
+from homeassistant.helpers.selector import (
+    BooleanSelector, EntitySelector, EntitySelectorConfig, NumberSelector, NumberSelectorConfig, NumberSelectorMode,
+    SelectSelector, SelectSelectorConfig, SelectSelectorMode,
+)
 
 from .clearone import ClearOneAuthError, ClearOneError, ClearOneTelnet
-from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_POWER_ENTITY
+from .const import (
+    CONF_DEVICE_ID, DEFAULTS, DOMAIN, OPT_ARYLIC_ENTITY, OPT_AUTO_OFF, OPT_AUTO_ON, OPT_HOLD_PLAYBACK,
+    OPT_IDLE_MINUTES, OPT_IGNORED_SOURCES, OPT_POWER_ENTITY, OPT_THRESHOLD, SOURCES,
+)
 
 
 class MultiroomConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -93,12 +99,29 @@ class MultiroomOptionsFlow(OptionsFlow):
                     options[key] = user_input[key]
                 else:
                     options.pop(key, None)
+            for key in DEFAULTS:
+                if key in user_input:
+                    options[key] = user_input[key]
+            options[OPT_IDLE_MINUTES] = int(options.get(OPT_IDLE_MINUTES, DEFAULTS[OPT_IDLE_MINUTES]))
             return self.async_create_entry(data=options)
+        def opt(key: str):
+            return self.config_entry.options.get(key, DEFAULTS[key])
+
         own = [e.entity_id for e in er.async_entries_for_config_entry(er.async_get(self.hass), self.config_entry.entry_id)]
         schema = vol.Schema({
             vol.Optional(OPT_ARYLIC_ENTITY, description={"suggested_value": self.config_entry.options.get(OPT_ARYLIC_ENTITY)}):
                 EntitySelector(EntitySelectorConfig(domain="media_player", exclude_entities=own)),
             vol.Optional(OPT_POWER_ENTITY, description={"suggested_value": self.config_entry.options.get(OPT_POWER_ENTITY)}):
                 EntitySelector(EntitySelectorConfig(domain=["switch", "input_boolean", "light"])),
+            vol.Required(OPT_AUTO_ON, default=opt(OPT_AUTO_ON)): BooleanSelector(),
+            vol.Required(OPT_HOLD_PLAYBACK, default=opt(OPT_HOLD_PLAYBACK)): BooleanSelector(),
+            vol.Required(OPT_AUTO_OFF, default=opt(OPT_AUTO_OFF)): BooleanSelector(),
+            vol.Required(OPT_IDLE_MINUTES, default=opt(OPT_IDLE_MINUTES)): NumberSelector(NumberSelectorConfig(
+                min=1, max=480, step=1, unit_of_measurement="min", mode=NumberSelectorMode.BOX)),
+            vol.Required(OPT_THRESHOLD, default=opt(OPT_THRESHOLD)): NumberSelector(NumberSelectorConfig(
+                min=-90, max=-10, step=1, unit_of_measurement="dB", mode=NumberSelectorMode.BOX)),
+            vol.Required(OPT_IGNORED_SOURCES, default=opt(OPT_IGNORED_SOURCES)): SelectSelector(SelectSelectorConfig(
+                options=[{"value": s["id"], "label": s["name"]} for s in SOURCES], multiple=True,
+                mode=SelectSelectorMode.LIST)),
         })
         return self.async_show_form(step_id="init", data_schema=schema)

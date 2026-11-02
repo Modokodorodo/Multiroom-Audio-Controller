@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import pathlib
 import sys
+from datetime import timedelta
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -177,7 +178,9 @@ async def test_options_choose_arylic_and_keep_caps(hass: HomeAssistant, socket_e
         result = await hass.config_entries.options.async_configure(result["flow_id"], {"arylic_entity": "media_player.arylic"})
         assert result["type"] == "create_entry"
         await hass.async_block_till_done()
-        assert entry.options == {"caps": {"toilet": -30, "kitchen-ext": -15.0, "laundry": -20.0, "kitchen": -15.0, "dining-room": -15.0, "terrace": -15.0}, "arylic_entity": "media_player.arylic"}
+        assert entry.options["caps"] == {"toilet": -30, "kitchen-ext": -15.0, "laundry": -20.0, "kitchen": -15.0, "dining-room": -15.0, "terrace": -15.0}
+        assert entry.options["arylic_entity"] == "media_player.arylic"
+        assert entry.options["idle_minutes"] == 20 and entry.options["auto_off"] is True  # defaults stored
         for _ in range(50):  # reloaded with the Arylic configured
             await hass.async_block_till_done()
             if entry.runtime_data and entry.runtime_data.status == "ready":
@@ -319,6 +322,102 @@ async def test_pause_and_reconnect_from_panel(hass: HomeAssistant, hass_ws_clien
                 assert entry.runtime_data.status == "ready"
         await ws.send_json({"id": 9, "type": f"{DOMAIN}/connection", "action": "explode"})
         assert not (await ws.receive_json())["success"]
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await fake.stop()
+
+
+
+async def _setup_auto(hass: HomeAssistant, fake: FakeClearOne, power_on: bool, **options) -> MockConfigEntry:
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "homeassistant", {})
+    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"rack": {"name": "Rack", "initial": power_on}}})
+    port = await fake.start()
+    entry = MockConfigEntry(domain=DOMAIN, title="ClearOne test", unique_id="127.0.0.1_0",
+                            data={"host": "127.0.0.1", "port": port, "username": "u", "password": "p", "device_id": "0"},
+                            options={"power_entity": "input_boolean.rack", **options})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    for _ in range(60):
+        await hass.async_block_till_done()
+        if entry.runtime_data.status == "ready":
+            break
+        await asyncio.sleep(0.05)
+    return entry
+
+
+async def test_auto_off_after_minutes_without_sound(hass: HomeAssistant, socket_enabled) -> None:
+    """Birds plays all day but is ignored; Arylic goes quiet: switch off after the set minutes."""
+    from homeassistant.util import dt as dt_util
+
+    fake = FakeClearOne()
+    entry = await _setup_auto(hass, fake, True, idle_minutes=10, ignored_sources=["birds"])
+    try:
+        device = entry.runtime_data
+        auto = device.auto_power
+        assert device.ignored_sources == {"birds"} and device.monitored_sources() == ["arylic"]
+        fake.v.update({"LVL 1 M I": "-61.00", "LVL 2 M I": "-62.00"})  # Arylic paused: noise only
+        await device.poll_presence()
+
+        def idle_for(minutes: int, tick: bool = True) -> None:
+            """Pretend the last activity (power-on and last sound) was this many minutes ago, then tick."""
+            past = dt_util.utcnow() - timedelta(minutes=minutes)
+            auto.on_since = past
+            device.last_sound_at = past
+            if tick:
+                auto._tick()
+
+        idle_for(9)
+        await hass.async_block_till_done()
+        assert hass.states.get("input_boolean.rack").state == "on"
+        assert device.auto_off_info["state"] == "counting"
+        assert hass.states.get("sensor.clearone_converge_pro_880t_automatic_switch_off").state != "unknown"
+        idle_for(11)
+        await hass.async_block_till_done()
+        assert hass.states.get("input_boolean.rack").state == "off"
+
+        # Sound on a monitored source resets the countdown.
+        await hass.services.async_call("input_boolean", "turn_on", {"entity_id": "input_boolean.rack"}, blocking=True)
+        idle_for(11, tick=False)
+        fake.v["LVL 1 M I"] = "-20.00"
+        await device.poll_presence()
+        auto._tick()
+        await hass.async_block_till_done()
+        assert hass.states.get("input_boolean.rack").state == "on"
+
+        # Turned off in the options: never switches off.
+        hass.config_entries.async_update_entry(entry, options={**entry.options, "auto_off": False})
+        await hass.async_block_till_done()
+        idle_for(60)
+        await hass.async_block_till_done()
+        assert hass.states.get("input_boolean.rack").state == "on"
+        assert device.auto_off_info["state"] == "disabled"
+        assert hass.states.get("sensor.clearone_converge_pro_880t_automatic_switch_off").state == "unknown"
+    finally:
+        await hass.config_entries.async_unload(entry.entry_id)
+        await fake.stop()
+
+
+async def test_auto_on_when_arylic_starts_playing(hass: HomeAssistant, socket_enabled) -> None:
+    """System off, Arylic starts playing: pause it, switch on, wait for the ClearOne, resume."""
+    from homeassistant.const import EVENT_CALL_SERVICE
+
+    fake = FakeClearOne()
+    hass.states.async_set("media_player.arylic", "idle")
+    entry = await _setup_auto(hass, fake, False, arylic_entity="media_player.arylic")
+    calls = []
+    hass.bus.async_listen(EVENT_CALL_SERVICE, lambda e: calls.append(e.data["service"])
+                          if e.data.get("service_data", {}).get("entity_id") == "media_player.arylic" else None)
+    try:
+        hass.states.async_set("media_player.arylic", "playing")
+        for _ in range(60):
+            await hass.async_block_till_done()
+            if "media_play" in calls:
+                break
+            await asyncio.sleep(0.05)
+        assert hass.states.get("input_boolean.rack").state == "on"
+        assert calls[:1] == ["media_pause"] and "media_play" in calls
         await hass.config_entries.async_unload(entry.entry_id)
     finally:
         await fake.stop()

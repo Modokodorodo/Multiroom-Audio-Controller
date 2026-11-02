@@ -14,6 +14,10 @@ It talks to the ClearOne directly over Telnet from inside Home Assistant. No ext
   - **Inputs**: input gain per source, and automatic gain control (AGC) on/off plus its settings. These are back-end settings, so they are only in the panel.
   - **Settings**: per-room volume caps.
   - **Power**: optional on/off button for the relay that powers the ClearOne and the amplifier.
+- **Automatic power** (needs the power switch; settings under **Configure**):
+  - **Switch on** when the Arylic starts playing or a room speaker is used. Optionally the Arylic is paused until the ClearOne is ready, so the start of the music is not lost.
+  - **Switch off** after a set number of minutes without sound (can be turned off). Sound means a source's input level is above a threshold (so noise on a channel does not count), from a source switched on in an unmuted room. Sources can be ignored, for example Birds playing all day. The Inputs tab shows live levels with the threshold marked, to help choose it.
+  - A **countdown sensor** ("Automatic switch-off", a timestamp) for dashboards, and the countdown at the bottom of the panel.
   - Connection status with automatic reconnect; the last known values stay visible while the device is unreachable. At the bottom: **Pause communication** (no connection and no polling until you resume, e.g. while you use Converge Console) and **Reconnect now**.
 - **A device per room**, in an area with the room's name, with entities for dashboards, automations and Alexa routines: **Volume** (number, capped), **Mute** (switch), one **switch per source**, **Playing** (binary sensor).
 - **A speaker per room for Music Assistant** (`media_player.<room>`). It streams through the Arylic network streamer: playing to a room switches Arylic on in that room; the speaker's volume and mute are the room's volume and mute in the ClearOne. There is one Arylic, so all room speakers share one stream. The Arylic itself is kept at 100 % volume.
@@ -27,7 +31,8 @@ It talks to the ClearOne directly over Telnet from inside Home Assistant. No ext
 3. **Settings → Devices & services → Add integration → ClearOne Multiroom.** Enter host, port 23, Console username and password, and device ID (usually 0). The login is checked before saving and stored by Home Assistant.
 4. **ClearOne Multiroom → Configure** (optional):
    - **Arylic media player**: the **LinkPlay** entity of the Arylic (not Music Assistant's copy). Enables streaming on the room speakers.
-   - **Power switch**: the relay that switches the ClearOne and the amplifier. Adds the ⏻ button to the panel.
+   - **Power switch**: the relay that switches the ClearOne and the amplifier. Adds the ⏻ button to the panel and enables automatic power.
+   - **Automatic power**: switch-on, hold playback, switch-off, minutes, sound threshold (dB) and ignored sources.
 5. **Music Assistant → Settings → Providers → Home Assistant MediaPlayers**: enable the room speakers.
 
 After each update: restart Home Assistant, then refresh the page.

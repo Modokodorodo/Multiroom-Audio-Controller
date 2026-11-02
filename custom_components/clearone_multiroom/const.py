@@ -7,6 +7,15 @@ OPT_CAPS = "caps"
 OPT_ARYLIC_ENTITY = "arylic_entity"
 OPT_SCENES = "scenes"
 OPT_POWER_ENTITY = "power_entity"
+# Automatic power (needs the power switch); see power.py.
+OPT_AUTO_ON = "auto_on"
+OPT_HOLD_PLAYBACK = "hold_playback"
+OPT_AUTO_OFF = "auto_off"
+OPT_IDLE_MINUTES = "idle_minutes"
+OPT_THRESHOLD = "sound_threshold_db"
+OPT_IGNORED_SOURCES = "ignored_sources"
+DEFAULTS = {OPT_AUTO_ON: True, OPT_HOLD_PLAYBACK: True, OPT_AUTO_OFF: True, OPT_IDLE_MINUTES: 20,
+            OPT_THRESHOLD: -45.0, OPT_IGNORED_SOURCES: []}
 ARYLIC_SOURCE_ID = "arylic"
 PANEL_URL = "multiroom"
 PANEL_COMPONENT = "clearone-multiroom-panel"

@@ -17,9 +17,10 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_DEVICE_ID, DOMAIN, OPT_ARYLIC_ENTITY, OPT_CAPS, OPT_POWER_ENTITY, OPT_SCENES, PANEL_COMPONENT, PANEL_URL, STATIC_URL
 from .device import MultiroomDevice
+from .power import AutoPower
 from .websocket import async_notify_subscribers, async_register_commands
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SCENE, Platform.SWITCH]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.MEDIA_PLAYER, Platform.NUMBER, Platform.SCENE, Platform.SENSOR, Platform.SWITCH]
 FRONTEND_DIR = pathlib.Path(__file__).parent / "frontend"
 VERSION = json.loads((pathlib.Path(__file__).parent / "manifest.json").read_text())["version"]
 
@@ -53,7 +54,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
     def push_to_panel(_event: Event | None = None) -> None:
         async_notify_subscribers(hass)
 
-    entry.async_on_unload(device.add_listener(push_to_panel))
+    entry.async_on_unload(device.add_listener(push_to_panel, levels=True))
     if power:  # the panel shows the switch; push its changes too (must run in the event loop: @callback)
         entry.async_on_unload(async_track_state_change_event(hass, [power], push_to_panel))
     # Connects, polls and reconnects in the background; cancelled automatically on unload.
@@ -65,11 +66,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: MultiroomConfigEntry) ->
     arylic = entry.options.get(OPT_ARYLIC_ENTITY)
     if arylic:
         entry.async_on_unload(_keep_arylic_at_full_volume(hass, arylic))
+    auto = device.auto_power = AutoPower(hass, entry, device, power, arylic)
+    for unsub in auto.start():
+        entry.async_on_unload(unsub)
 
     async def options_updated(hass: HomeAssistant, entry: MultiroomConfigEntry) -> None:
         # Caps and scenes are applied live; a different Arylic player or power switch needs a reload.
         if entry.options.get(OPT_ARYLIC_ENTITY) != arylic or entry.options.get(OPT_POWER_ENTITY) != power:
             await hass.config_entries.async_reload(entry.entry_id)
+        else:
+            auto.apply_settings()  # threshold, ignored inputs, minutes, on/off switches: applied live
 
     entry.async_on_unload(entry.add_update_listener(options_updated))
     return True

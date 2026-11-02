@@ -48,16 +48,27 @@
       "playing": {
         "name": "Playing"
       }
+    },
+    "sensor": {
+      "auto_off": {
+        "name": "Automatic switch-off"
+      }
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Options",
-        "description": "Arylic media player: each room speaker streams through it. Power switch: the relay that switches the ClearOne and the amplifier; it gets an on/off button in the Multiroom panel.",
+        "description": "Arylic media player: room speakers stream through it. Power switch: the relay of the ClearOne and the amplifier (adds an on/off button to the panel and enables automatic power). Automatic power: switch on when the Arylic starts playing or a room speaker is used, and switch off after the set minutes without sound. Sound counts when a source's input level is above the threshold, from sources switched on in an unmuted room; ignored sources (e.g. Birds playing all day) never count. See the live input levels on the panel's Inputs tab to choose the threshold.",
         "data": {
           "arylic_entity": "Arylic media player",
-          "power_entity": "Power switch (ClearOne and amplifier)"
+          "power_entity": "Power switch (ClearOne and amplifier)",
+          "auto_on": "Switch on automatically when the Arylic plays or a room speaker is used",
+          "hold_playback": "Pause the Arylic until the ClearOne is ready (keeps the start of the music)",
+          "auto_off": "Switch off automatically when there is no sound",
+          "idle_minutes": "Minutes without sound before switching off",
+          "sound_threshold_db": "Sound threshold (input level)",
+          "ignored_sources": "Ignore these sources for switching off"
         }
       }
     }

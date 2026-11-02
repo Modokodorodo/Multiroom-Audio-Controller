@@ -20,6 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 _GAIN = re.compile(r"(-?[0-9]+(?:\.[0-9]+)?) A")
 _AGCSET = re.compile(r"(-?[0-9]+(?:\.[0-9]+)?) (-?[0-9]+(?:\.[0-9]+)?) ([0-9]+(?:\.[0-9]+)?) ([0-9]+(?:\.[0-9]+)?)")
 
+DEFAULT_THRESHOLD_DB = -45.0
 FULL_REFRESH_S = 15
 PRESENCE_S = 3
 HARD_MAX_CAP_DB = 0.0
@@ -51,23 +52,33 @@ class MultiroomDevice:
         self.room_state: dict[str, dict[str, Any]] = {}
         self.input_state: dict[str, dict[str, Any]] = {}
         self._listeners: list[Callable[[], None]] = []
+        self._level_listeners: list[Callable[[], None]] = []
+        # Sound detection for auto-off: input levels (dB, LVL position I) compared with a threshold.
+        self.levels: dict[str, float] = {}          # source id -> loudest of its inputs
+        self.sound_threshold_db = DEFAULT_THRESHOLD_DB
+        self.ignored_sources: set[str] = set()
+        self.last_sound_at: datetime | None = None  # last time a monitored source had sound
         self._op = asyncio.Lock()  # a refresh and a change never interleave
         self._wake = asyncio.Event()
         self._fast_until = 0.0
         self.paused = False
         self._restart = False
         self.power_entity: str | None = None  # set by the integration; shown in the panel
+        self.auto_off_info: dict[str, Any] | None = None  # set by the integration's auto-power logic
+        self.ensure_power: Callable[[], Any] | None = None  # set when auto power is configured
         self.on_caps_changed: Callable[[dict[str, float]], None] | None = None
         self.scenes: list[dict[str, Any]] = [dict(sc) for sc in (scenes or [])]
         self.on_scenes_changed: Callable[[list[dict[str, Any]]], None] | None = None
 
     # ---- listeners -------------------------------------------------------------------------
-    def add_listener(self, cb: Callable[[], None]) -> Callable[[], None]:
-        self._listeners.append(cb)
-        return lambda: self._listeners.remove(cb) if cb in self._listeners else None
+    def add_listener(self, cb: Callable[[], None], levels: bool = False) -> Callable[[], None]:
+        """Called on every state change; with levels=True also on input-level updates (every 3 s)."""
+        target = self._level_listeners if levels else self._listeners
+        target.append(cb)
+        return lambda: target.remove(cb) if cb in target else None
 
-    def _notify(self) -> None:
-        for cb in list(self._listeners):
+    def _notify(self, levels_only: bool = False) -> None:
+        for cb in list(self._level_listeners) + ([] if levels_only else list(self._listeners)):
             try:
                 cb()
             except Exception:  # a broken listener must not stop the device
@@ -186,14 +197,45 @@ class MultiroomDevice:
             raise ClearOneError("Unparseable audio presence")
         self.presence_bits = bits
 
+    async def _levels(self) -> None:
+        levels = {}
+        for src in self.sources:
+            vals = []
+            for i in src["inputs"]:
+                v = await self._q(f"LVL {i['channel']} {i['group']} I")
+                if not re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", v):
+                    raise ClearOneError(f"Unparseable level for {i['group']}{i['channel']}")
+                vals.append(float(v))
+            levels[src["id"]] = max(vals)
+        self.levels = levels
+        if any(self.has_sound(s) for s in self.monitored_sources()):
+            self.last_sound_at = datetime.now(timezone.utc)
+
+    def has_sound(self, source_id: str) -> bool:
+        level = self.levels.get(source_id)
+        return level is not None and level > self.sound_threshold_db
+
+    def monitored_sources(self) -> list[str]:
+        """Sources that count for auto-off: not ignored, and switched on in at least one unmuted room."""
+        out = []
+        for src in self.sources:
+            if src["id"] in self.ignored_sources:
+                continue
+            for st in self.room_state.values():
+                if st["routes"].get(src["id"]) and not st["muted"]:
+                    out.append(src["id"])
+                    break
+        return out
+
     async def poll_presence(self) -> None:
         if self._op.locked():
             return
         async with self._op:
-            before = self.presence_bits
+            before = (self.presence_bits, {k: self.has_sound(k) for k in self.levels})
             await self._presence()
-        if self.presence_bits != before:
-            self._notify()
+            await self._levels()
+        after = (self.presence_bits, {k: self.has_sound(k) for k in self.levels})
+        self._notify(levels_only=after == before)
 
     async def refresh(self) -> None:
         """Read everything the integration shows (about 30 queries; VER doubles as heartbeat)."""
@@ -230,12 +272,19 @@ class MultiroomDevice:
                                                      "responseS": float(st[3]), "maxGainDb": float(st[4])}})
                 inputs[src["id"]] = {"channels": channels}
             self.room_state, self.input_state = rooms, inputs
+            await self._levels()
             self.status, self.error, self.next_retry_at, self.updated_at = "ready", None, None, _now()
         self._notify()
 
     # ---- derived state -------------------------------------------------------------------------
     def present(self, source_id: str) -> bool | None:
-        if self.presence_bits is None or self.status != "ready":
+        """Signal on this source: its input level is above the sound threshold (the ClearOne's own
+        presence flag also fires on a streamer's noise floor, so it is only a fallback)."""
+        if self.status != "ready":
+            return None
+        if source_id in self.levels:
+            return self.has_sound(source_id)
+        if self.presence_bits is None:
             return None
         src = next((s for s in self.sources if s["id"] == source_id), None)
         return bool(src) and any((self.presence_bits >> (i["channel"] - 1)) & 1 for i in src["inputs"])
@@ -267,7 +316,11 @@ class MultiroomDevice:
                 "nextRetryAt": self.next_retry_at,
                 "device": {"host": self.host, "id": self.id, "firmware": self.firmware},
                 "inputRange": dict(INPUT_GAIN_RANGE), "rooms": [self.room(r["id"]) for r in self.rooms],
-                "inputs": [self.input(s["id"]) for s in self.sources],
+                "inputs": [dict(self.input(s["id"]), levelDb=self.levels.get(s["id"]), ignored=s["id"] in self.ignored_sources)
+                           for s in self.sources],
+                "activity": {"thresholdDb": self.sound_threshold_db, "monitored": self.monitored_sources(),
+                             "lastSoundAt": self.last_sound_at.isoformat() if self.last_sound_at else None,
+                             "autoOff": self.auto_off_info},
                 "scenes": [self.scene_summary(sc) for sc in self.scenes]}
 
     # ---- changes ---------------------------------------------------------------------------------

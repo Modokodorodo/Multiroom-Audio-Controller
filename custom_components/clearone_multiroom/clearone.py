@@ -12,7 +12,7 @@ import re
 _CH = r"(?:[1-9]|1[0-2])"
 QUERY = re.compile(
     rf"#D[0-9AB] (?:VER|DID|ADPRESENT|(?:GAIN|MUTE) {_CH} O|GAIN {_CH} [ML]|(?:AGC|AGCSET) {_CH} [ML]"
-    rf"|MTRX {_CH} [ML] {_CH} O|MTRX [A-H] P {_CH} O|LABEL {_CH} [OML] 0)"
+    rf"|LVL {_CH} [ML] I|MTRX {_CH} [ML] {_CH} O|MTRX [A-H] P {_CH} O|LABEL {_CH} [OML] 0)"
 )
 WRITE = re.compile(
     r"#D[0-9AB] (?:GAIN [1-6] O -?[0-9]{1,2}\.[0-9] A|MUTE [1-6] O [01]"

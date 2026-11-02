@@ -52,3 +52,7 @@ Factory credential values are intentionally absent from project documentation/co
 ## Observed on actual hardware — login detail (2026-10-16)
 
 Banner `* Converge *`, `Version 4.4.0.31`, then `user: ` / `pass: `. After valid credentials the device sends `Authenticated.`, `Text Mode Engaged`, `Level: Administrator`; no `OK>` yet. `OK> ` appears with the first command reply, e.g. `\r\nOK> #D0 VER 4.4.0.31\r\nOK> `. A full refresh of ~190 queries completes in about a second. LABEL replies echo the query (`#D0 LABEL 1 O 0 WC`), so prefix-matching on the exact query is a reliable reply check. No Telnet option negotiation was observed in this session (client refuses any offered option).
+
+## Level meters (2026-11-02, hardware-confirmed)
+
+`LVL <ch> <grp> <position>` (serial guide PDF 32 / 248; meter positions PDF 4 / 220) is read-only and needs the position letter, not a number: `#D0 LVL 1 M I` → `-60.49` (input level, dB); `#D0 LVL 1 M 1` → `ERROR ARGUMENT ERROR.`. Mic-input positions: I input level, A post-gain pre-filter, N post-filter pre-gate, G post-gate. The integration reads position I for the source inputs every 3 s. `ADPRESENT` reported the idle Arylic (≈ -60 dB) as present, so it is not used for sound detection.
