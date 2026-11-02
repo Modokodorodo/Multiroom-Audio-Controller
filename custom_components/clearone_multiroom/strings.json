@@ -11,6 +11,17 @@
           "password": "Password",
           "device_id": "Device ID"
         }
+      },
+      "reconfigure": {
+        "title": "Change ClearOne connection",
+        "description": "Use this when the ClearOne's IP address or login changed. Leave the password empty to keep the current one. The connection is checked before saving; volume caps, scenes and options are kept.",
+        "data": {
+          "host": "Host",
+          "port": "Telnet port",
+          "username": "Username",
+          "password": "Password (empty = keep current)",
+          "device_id": "Device ID"
+        }
       }
     },
     "error": {
@@ -18,7 +29,8 @@
       "invalid_auth": "The ClearOne rejected the login."
     },
     "abort": {
-      "already_configured": "This ClearOne is already configured."
+      "already_configured": "This ClearOne is already configured.",
+      "reconfigure_successful": "Connection updated."
     }
   },
   "entity": {

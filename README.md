@@ -32,6 +32,8 @@ It talks to the ClearOne directly over Telnet from inside Home Assistant. No ext
 
 After each update: restart Home Assistant, then refresh the page.
 
+**ClearOne got a new IP address, or the login changed?** Settings → Devices & services → ClearOne Multiroom → ⋮ → **Reconfigure**. Change the host (leave the password empty to keep it); the connection is checked before saving, and caps, scenes and options are kept. Tip: give the ClearOne a fixed address (DHCP reservation) in your router so it does not change again.
+
 ### Adapting to your installation
 
 The room/source mapping is set in [`custom_components/clearone_multiroom/const.py`](custom_components/clearone_multiroom/const.py) and currently describes one specific installation: three mono rooms on outputs 1–3, and sources Arylic (processing block A, inputs M1+M2), Birds (M3) and Alexa (M4). Change `ROOMS` and `SOURCES` there for another setup, and widen the command whitelist in `clearone.py` if you use other outputs or inputs.

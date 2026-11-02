@@ -260,3 +260,37 @@ async def test_power_switch_in_panel(hass: HomeAssistant, hass_ws_client, socket
         await hass.config_entries.async_unload(entry.entry_id)
     finally:
         await fake.stop()
+
+
+async def test_reconfigure_new_address_keeps_options(hass: HomeAssistant, socket_enabled) -> None:
+    """The ClearOne moved: change host/port in place; password, caps, scenes and options stay."""
+    old, new = FakeClearOne(), FakeClearOne()
+    entry = await _setup(hass, old)
+    new_port = await new.start()
+    try:
+        entry.runtime_data.save_scene("Evening", ["toilet"])
+        hass.config_entries.async_update_entry(entry, options={**entry.options, "arylic_entity": "media_player.arylic"})
+        await hass.async_block_till_done()
+        options_before = dict(entry.options)
+
+        result = await entry.start_reconfigure_flow(hass)
+        assert result["type"] == "form" and result["step_id"] == "reconfigure"
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "host": "127.0.0.1", "port": new_port, "username": "u", "password": "wrong", "device_id": "0"})
+        assert result["errors"] == {"base": "invalid_auth"}
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {
+            "host": "127.0.0.1", "port": new_port, "username": "u", "device_id": "0"})  # password left empty
+        assert result["type"] == "abort" and result["reason"] == "reconfigure_successful"
+        for _ in range(50):
+            await hass.async_block_till_done()
+            if entry.runtime_data and entry.runtime_data.status == "ready" and entry.runtime_data.port == new_port:
+                break
+            await asyncio.sleep(0.05)
+        assert entry.data["port"] == new_port and entry.data["password"] == "p"
+        assert entry.options == options_before
+        assert entry.runtime_data.port == new_port and entry.runtime_data.status == "ready"
+        assert [s["name"] for s in entry.runtime_data.scenes] == ["Evening"]
+        await hass.config_entries.async_unload(entry.entry_id)
+    finally:
+        await old.stop()
+        await new.stop()

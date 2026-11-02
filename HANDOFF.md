@@ -14,6 +14,8 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 
 **Milestone 16: power switch in the panel** (version 0.3.1). Options: `power_entity` (switch / input_boolean / light; the KinCony relay that powers the ClearOne and the amplifier). Panel: ⏻ button with confirmation on switch-off, "switched off" banner with Turn on, "starting up" while connecting. `clearone_multiroom/power` calls homeassistant.turn_on/off, then `device.kick()` retries every 5 s for 3 minutes. Panel subscriptions are now held at hass level and look the device up on every push, so the panel keeps working after the entry reloads. A tests-found bug (state listener without @callback ran in a worker thread) was fixed before release. 9 device + 6 HA tests pass. Not tested with the real relay.
 
+**Version 0.3.2: Reconfigure.** Settings → Devices & services → ClearOne Multiroom → ⋮ → Reconfigure changes host, port, login and device ID in place (empty password = keep), validated by connecting, entry reloaded; options (caps, scenes, Arylic, power) kept. 7 HA tests + 9 device tests pass.
+
 | Area | State |
 |---|---|
 | Rooms | Toilet (O1), Kitchen extension (O2), Laundry room (O3). Mono, one output each. O4–O12 are expansion outputs and hidden. |
@@ -27,7 +29,7 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, an
 
 ## Device and permissions
 
-- ClearOne at 192.168.1.175, TCP 23, device type D, ID 0, firmware 4.4.0.31.
+- ClearOne at 192.168.1.175 until 2026-11; the user reported a new IP address (not recorded here yet), TCP 23, device type D, ID 0, firmware 4.4.0.31. Change it in Home Assistant with **Reconfigure** (v0.3.2).
 - Login: Console credentials (factory default; the user has decided to keep it, do not raise this again). Credentials are passed via environment variables and are not stored in this repository.
 - The user has authorized live changes made through the app: room gain, mute, source routing on/off for the configured rooms, input gain, AGC on/off and AGC settings. For any **new kind** of write, or settings outside the app, ask the user first and read the current value before changing it.
 - Never clear the matrix, run presets/macros, change reporting settings, or change unrelated routes or DSP. Never replay writes after a reconnect.

@@ -23,23 +23,29 @@ class MultiroomConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         return MultiroomOptionsFlow()
 
+    @staticmethod
+    async def _check(data: dict[str, Any]) -> dict[str, str]:
+        """Log in and query the device ID; return form errors (empty when it works)."""
+        client = ClearOneTelnet(data[CONF_HOST], data[CONF_PORT])
+        try:
+            await client.connect(data[CONF_USERNAME], data[CONF_PASSWORD])
+            await client.query(f"#D{data[CONF_DEVICE_ID]} VER")
+        except ClearOneAuthError:
+            return {"base": "invalid_auth"}
+        except ClearOneError:
+            return {"base": "cannot_connect"}
+        finally:
+            client.close()
+        return {}
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             await self.async_set_unique_id(f"{user_input[CONF_HOST]}_{user_input[CONF_DEVICE_ID]}")
             self._abort_if_unique_id_configured()
-            client = ClearOneTelnet(user_input[CONF_HOST], user_input[CONF_PORT])
-            try:
-                await client.connect(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
-                await client.query(f"#D{user_input[CONF_DEVICE_ID]} VER")
-            except ClearOneAuthError:
-                errors["base"] = "invalid_auth"
-            except ClearOneError:
-                errors["base"] = "cannot_connect"
-            else:
+            errors = await self._check(user_input)
+            if not errors:
                 return self.async_create_entry(title=f"ClearOne {user_input[CONF_HOST]}", data=user_input)
-            finally:
-                client.close()
         schema = vol.Schema({
             vol.Required(CONF_HOST): str,
             vol.Required(CONF_PORT, default=23): int,
@@ -48,6 +54,32 @@ class MultiroomConfigFlow(ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_DEVICE_ID, default="0"): vol.In(list("0123456789AB")),
         })
         return self.async_show_form(step_id="user", data_schema=self.add_suggested_values_to_schema(schema, user_input), errors=errors)
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Change address, port, login or device ID in place; options (caps, scenes, Arylic, power) are kept."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            data = {**entry.data, **user_input}
+            if not user_input.get(CONF_PASSWORD):
+                data[CONF_PASSWORD] = entry.data[CONF_PASSWORD]  # empty field keeps the stored password
+            unique_id = f"{data[CONF_HOST]}_{data[CONF_DEVICE_ID]}"
+            if any(e.unique_id == unique_id and e.entry_id != entry.entry_id for e in self._async_current_entries()):
+                return self.async_abort(reason="already_configured")
+            errors = await self._check(data)
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    entry, unique_id=unique_id, title=f"ClearOne {data[CONF_HOST]}", data=data)
+        current = {k: v for k, v in entry.data.items() if k != CONF_PASSWORD}
+        schema = vol.Schema({
+            vol.Required(CONF_HOST): str,
+            vol.Required(CONF_PORT): int,
+            vol.Required(CONF_USERNAME): str,
+            vol.Optional(CONF_PASSWORD): str,
+            vol.Required(CONF_DEVICE_ID): vol.In(list("0123456789AB")),
+        })
+        return self.async_show_form(step_id="reconfigure", errors=errors,
+                                    data_schema=self.add_suggested_values_to_schema(schema, user_input or current))
 
 
 class MultiroomOptionsFlow(OptionsFlow):
