@@ -26,8 +26,8 @@ Status legend: **Done**, **Next**, **Idea**, **Later phase** (from the original 
 | # | Feature | Notes | Status |
 |---|---|---|---|
 | A1 | "Playing" indicator per room and per source | Uses `ADPRESENT` (one query every 3 s). A room shows Playing when a source is switched on there, has signal at its input, and the room is not muted. Inferred, not measured at the output. | **Done** (2026-10-16) |
-| A2 | Double-click launcher for the Mac | Start the service without Terminal. Store the device password in the macOS Keychain or a local file outside the project, not on the command line. Optionally start at login. | Next |
-| A3 | Scenes | One click sets several rooms (sources, volume, mute), for example "Morning: Birds in Toilet at -35 dB" or "Night: all muted". Stored in the app, not as ClearOne presets, so nothing hidden changes on the device. | **Done** (2026-10-17) in the Home Assistant integration: Scenes tab, quick buttons, scene entities (usable from Alexa). Not in the Mac app. |
+| A2 | Double-click launcher for the Mac | Obsolete: the Mac app was removed (2026-11-02); everything runs in Home Assistant. | Dropped |
+| A3 | Scenes | One click sets several rooms (sources, volume, mute), for example "Morning: Birds in Toilet at -35 dB" or "Night: all muted". Stored in the app, not as ClearOne presets, so nothing hidden changes on the device. | **Done** (2026-10-17) in the Home Assistant integration: Scenes tab, quick buttons, scene entities (usable from Alexa). |
 | A4 | Schedules | For example Birds only during daytime. App-side, or the ClearOne Event Scheduler. Easier to manage from Home Assistant. | Idea |
 | A5 | Level meters per room | Live signal level via `LVL`. Needs faster polling; only worth it if wanted. | Idea |
 | A6 | Show the integrated amplifier output O13 | Read-only first, to see whether it is used. | Idea |

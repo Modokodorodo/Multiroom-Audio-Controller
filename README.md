@@ -4,8 +4,6 @@ A **Home Assistant custom integration** (installable with HACS) that turns a **C
 
 It talks to the ClearOne directly over Telnet from inside Home Assistant. No extra service, no cloud, no MQTT.
 
-> The repository also contains the original stand-alone **Mac app** (Node.js) this started as; see [Stand-alone Mac app](#stand-alone-mac-app). Most people want the Home Assistant integration.
-
 ## What you get in Home Assistant
 
 - **Multiroom sidebar panel**, following your Home Assistant theme:
@@ -56,21 +54,7 @@ The room/source mapping is set in [`custom_components/clearone_multiroom/const.p
 python3 -m unittest discover -s tests   # device layer against a simulated ClearOne (Python 3.11+)
 python3 -m pytest tests_ha              # the integration in a Home Assistant test instance
                                         # (pip install pytest-homeassistant-custom-component)
-npm test                                # stand-alone Mac app
 ```
-
-## Stand-alone Mac app
-
-The same controls as a local web page served by a small Node.js service (Node 22+, no dependencies). It has rooms, inputs and caps, but no scenes, room speakers or power button.
-
-```sh
-npm start                                        # mock mode with demo rooms: http://127.0.0.1:8787
-CLEARONE_HOST=192.168.1.241 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
-```
-
-Open **http://127.0.0.1:8787** (numeric address only). Credentials come from the environment, never from files. Mapping: `config/live-rooms.json`; caps saved from the page: `config/caps.local.json` (git-ignored). The service listens on 127.0.0.1 only and rejects foreign `Host`/`Origin` headers.
-
-Use one controller for daily use (the integration *or* the Mac app); they work side by side, but each keeps its own connection to the ClearOne.
 
 ## Repository layout
 
@@ -80,7 +64,6 @@ custom_components/clearone_multiroom/   Home Assistant integration
   const.py                               room/source mapping of the installation
   frontend/multiroom-panel.js            sidebar panel
 tests/, tests_ha/                        integration tests
-src/, public/, config/, test/            stand-alone Mac app
 docs/                                    project knowledge, see below
 ```
 

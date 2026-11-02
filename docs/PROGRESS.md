@@ -20,6 +20,7 @@ Updated 2026-10-16 (Europe/Brussels).
 | 10 | Layout v2 | Claude Code | Cards first; connection details at the bottom; status pill and warning banner. |
 | 11 | "Playing" indicator | Claude Code | Audio presence (`ADPRESENT`) every 3 s. |
 | 12 | Repository clean-up | Claude Code | Renamed client to `clearone-telnet.js`, removed obsolete template, rewrote docs, prepared for GitHub. |
+| 21 | Mac app removed | Claude Code | Only the Home Assistant integration remains. |
 | 20 | Automatic power | Claude Code | Switch on with the Arylic or a room speaker, switch off after N minutes without sound (level threshold, ignored sources), countdown sensor (v0.3.5). |
 | 19 | Pause / reconnect | Claude Code | Pause communication and Reconnect now in the panel (v0.3.4). |
 | 18 | Six rooms | Claude Code | Kitchen (O4), Dining room (O5), Terrace (O6) added (v0.3.3). |
@@ -31,14 +32,7 @@ Updated 2026-10-16 (Europe/Brussels).
 
 ## Code map
 
-- `src/server.js`: loopback HTTP server, static files, JSON API, same-origin and Host checks. `DEVICE_MODE=mock` (default) or `live`.
-- `src/live-controller.js`: connection lifecycle, full refresh every 15 s, presence poll every 3 s, reconnect with back-off, one validated change at a time with readback (`update`, `setInputGain`, `setInputAgc`, `setInputAgcSettings`, `setCap`).
-- `src/clearone-telnet.js`: Telnet transport: option refusal, login, serialized queries matched on the echoed command, deadlines, bounded buffer, QUERY and WRITE whitelists.
-- `src/controller.js`, `src/mock-device.js`, `src/protocol.js`, `config/mock.js`: mock mode.
-- `config/live-rooms.json`: the installation's room/source mapping and ranges.
-- `public/`: `index.html`, `app.js`, `style.css`.
-- `test/controller.test.js`: protocol helpers, mock lifecycle, HTTP security.
-- `test/live.test.js`: whitelist refusal, login and fragmented replies against a simulated device, validation, readback mismatch, timeouts.
+Milestones 1–12 were built as a stand-alone Mac app (Node.js), removed on 2026-11-02 (still in the git history up to b885eb8). Everything below is the Home Assistant integration.
 
 ## Home Assistant integration (`custom_components/clearone_multiroom`)
 
@@ -53,15 +47,3 @@ Updated 2026-10-16 (Europe/Brussels).
 - `config_flow.py`: host/port/login/device ID, checked by connecting; reconfigure (same fields, password optional); options: Arylic media player, power switch.
 - `frontend/multiroom-panel.js`: the sidebar panel.
 - Tests: `tests/test_device.py` (stateful simulated ClearOne, `python3 -m unittest discover -s tests`), `tests_ha/` (Home Assistant test instance, `python -m pytest tests_ha`).
-
-## API (Mac app, live mode)
-
-| Method and path | Body | Effect |
-|---|---|---|
-| `GET /api/state` | | Current state |
-| `POST /api/connect`, `/api/disconnect` | `{}` | Reconnect / disconnect |
-| `POST /api/rooms/<id>` | `{"patch": {"gainDb": n} \| {"muted": bool} \| {"source": {"id", "on": bool}}}` | Room change |
-| `POST /api/rooms/<id>/cap` | `{"maxDb": n}` | App-side cap only |
-| `POST /api/inputs/<id>` | `{"gainDb": n}` | Input gain |
-| `POST /api/inputs/<id>/agc` | `{"on": bool}` | AGC on/off |
-| `POST /api/inputs/<id>/agcset` | `{"settings": {"thresholdDb", "targetDb", "responseS", "maxGainDb"}}` | AGC settings |

@@ -25,7 +25,7 @@ User authorized read-only inspection, supplied 192.168.1.175, and confirmed fact
 
 Factory credential values are intentionally absent from project documentation/code. The one-off inspection helper was removed after capture and is not a reusable live controller.
 
-## Implementation (src/clearone-telnet.js, src/live-controller.js)
+## Implementation (custom_components/clearone_multiroom: clearone.py, device.py)
 
 - Telnet options offered by the device are refused (DO → WONT, WILL → DONT); subnegotiation is skipped. None were observed in practice.
 - Login: wait for `user:`, send user + CR; wait for `pass:`, send password + CR; wait for `Authenticated.` (not `OK>`, see below).

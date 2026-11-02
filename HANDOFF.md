@@ -4,7 +4,7 @@ Current state of the project for whoever continues (Claude Code, Codex or a pers
 
 ## Status
 
-The live browser interface controls the real ClearOne CONVERGE Pro 880T and is in daily use by the owner.
+The Home Assistant integration controls the real ClearOne CONVERGE Pro 880T and is in daily use by the owner.
 
 **New (Milestone 13): Home Assistant integration** in `custom_components/clearone_multiroom` (install: README). Python port of the device logic (same whitelist, validation and readback), a **Multiroom** sidebar panel (port of the web UI, using Home Assistant theme colors, state pushed over the HA WebSocket), and per-room entities: Volume (number), Mute (switch), one switch per source, Playing (binary sensor). Input gain and AGC are panel-only by the user's choice. Caps are stored in the config entry options. Tested: 8 Python device tests against a simulated ClearOne; 2 tests in a real Home Assistant 2025.1 test instance (setup, entities, services, panel registration, WebSocket commands, config flow incl. wrong password, unload); hardware read and one gain write/restore through the Python code. **Not yet tested: installation in the user's Home Assistant and the panel in a browser.** 
 
@@ -18,7 +18,7 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 
 **Version 0.3.4: pause and reconnect.** Panel connection section: Pause/Resume communication (device closes the session and stops polling; status `paused`; entities unavailable; not persisted across restarts) and Reconnect now (drops the session and connects immediately, also skipping a back-off wait). `clearone_multiroom/connection {action: pause|resume|reconnect}`. Run loop sleeps are interruptible. Confirmed on hardware (connect 0.8 s, resume 0.9 s, reconnect 0.8 s; no writes). 10 device + 8 HA tests pass.
 
-**Version 0.3.3: six rooms.** Added Kitchen (O4), Dining room (O5) and Terrace (O6) to the integration (`const.py`) and the Mac app (`config/live-rooms.json`); write whitelists widened from outputs 1–3 to 1–6 in both clients. Caps -15 dB are proposed defaults. Terrace was at 0 dB on 2026-11-02 (above its cap; flagged in the panel, not changed). Read of all six rooms through the integration code confirmed on hardware (0.9 s).
+**Version 0.3.3: six rooms.** Added Kitchen (O4), Dining room (O5) and Terrace (O6) to the integration (`const.py`); write whitelist widened from outputs 1–3 to 1–6. Caps -15 dB are proposed defaults. Terrace was at 0 dB on 2026-11-02 (above its cap; flagged in the panel, not changed). Read of all six rooms through the integration code confirmed on hardware (0.9 s).
 
 **Version 0.3.2: Reconfigure.** Settings → Devices & services → ClearOne Multiroom → ⋮ → Reconfigure changes host, port, login and device ID in place (empty password = keep), validated by connecting, entry reloaded; options (caps, scenes, Arylic, power) kept. 7 HA tests + 9 device tests pass.
 
@@ -29,7 +29,7 @@ The live browser interface controls the real ClearOne CONVERGE Pro 880T and is i
 | Inputs tab | Input gain per source; AGC on/off and settings in a dialog. Arylic = M1+M2 written together. |
 | Settings | Per-room volume caps (Toilet -25, Kitchen extension -15, Laundry room -20 dB confirmed by the user; Kitchen, Dining room, Terrace -15 dB proposed). |
 | Connection | Status pill, warning banner, automatic reconnect with back-off (5–30 s); no writes are replayed. |
-| Tests | `npm test`: 12 passing (Mac app). Python: 11 device tests + 10 Home Assistant tests passing. |
+| Tests | Python: 11 device tests + 10 Home Assistant tests passing. |
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, and [docs/HARDWARE.md](docs/HARDWARE.md) for every hardware test performed.
 
@@ -42,11 +42,7 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for the milestone list and code map, an
 
 ## Run
 
-```sh
-CLEARONE_HOST=192.168.1.241 CLEARONE_USER=<user> CLEARONE_PASS=<password> DEVICE_MODE=live npm start
-```
-
-Open http://127.0.0.1:8787. `npm start` alone runs the mock.
+The project is only the Home Assistant integration (`custom_components/clearone_multiroom`, install via HACS; see README). The stand-alone Mac app (Node.js) was removed on 2026-11-02 at the user's request; it is still in the git history (last commit containing it: b885eb8).
 
 ## Hardware-confirmed vs not yet tested
 

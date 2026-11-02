@@ -1,6 +1,6 @@
 # Room, source and channel mapping
 
-Confirmed by the user on 2026-10-16 unless noted. The machine-readable version is `config/live-rooms.json`.
+Confirmed by the user on 2026-10-16 unless noted. The machine-readable version is `ROOMS` and `SOURCES` in `custom_components/clearone_multiroom/const.py`.
 
 ## Device
 
